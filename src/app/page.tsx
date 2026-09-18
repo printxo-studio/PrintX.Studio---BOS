@@ -29,46 +29,62 @@ import {
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  // Real database metrics aggregation
-  const [
-    totalOrders,
-    orders,
-    customers,
-    printers,
-    printJobs,
-    filamentSpools,
-    qcInspections,
-    invoices,
-    expenses,
-    tasks,
-    notifications,
-  ] = await Promise.all([
-    db.order.count(),
-    db.order.findMany({
-      include: { customer: true },
-      orderBy: { orderDate: 'desc' },
-      take: 6,
-    }),
-    db.customer.findMany(),
-    db.printer.findMany(),
-    db.printJob.findMany({
-      include: { printer: true, product: true },
-      orderBy: { createdAt: 'desc' },
-    }),
-    db.filamentSpool.findMany(),
-    db.qualityInspection.findMany(),
-    db.invoice.findMany(),
-    db.expense.findMany(),
-    db.task.findMany({
-      where: { status: { not: 'DONE' } },
-      orderBy: { dueDate: 'asc' },
-      take: 5,
-    }),
-    db.notification.findMany({
-      where: { isRead: false },
-      take: 4,
-    }),
-  ]);
+  let totalOrders = 0;
+  let orders: any[] = [];
+  let customers: any[] = [];
+  let printers: any[] = [];
+  let printJobs: any[] = [];
+  let filamentSpools: any[] = [];
+  let qcInspections: any[] = [];
+  let invoices: any[] = [];
+  let expenses: any[] = [];
+  let tasks: any[] = [];
+  let notifications: any[] = [];
+  let dbError: string | null = null;
+
+  try {
+    const results = await Promise.all([
+      db.order.count(),
+      db.order.findMany({
+        include: { customer: true },
+        orderBy: { orderDate: 'desc' },
+        take: 6,
+      }),
+      db.customer.findMany(),
+      db.printer.findMany(),
+      db.printJob.findMany({
+        include: { printer: true, product: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      db.filamentSpool.findMany(),
+      db.qualityInspection.findMany(),
+      db.invoice.findMany(),
+      db.expense.findMany(),
+      db.task.findMany({
+        where: { status: { not: 'DONE' } },
+        orderBy: { dueDate: 'asc' },
+        take: 5,
+      }),
+      db.notification.findMany({
+        where: { isRead: false },
+        take: 4,
+      }),
+    ]);
+    totalOrders = results[0];
+    orders = results[1];
+    customers = results[2];
+    printers = results[3];
+    printJobs = results[4];
+    filamentSpools = results[5];
+    qcInspections = results[6];
+    invoices = results[7];
+    expenses = results[8];
+    tasks = results[9];
+    notifications = results[10];
+  } catch (err: any) {
+    console.error('Database query error on Dashboard:', err);
+    dbError = err?.message || 'Database connection error';
+  }
 
   // Calculations from real data (Section 49)
   const totalRevenue = invoices
@@ -125,6 +141,31 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {dbError && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 24,
+            padding: '16px 20px',
+            backgroundColor: 'rgba(239, 68, 68, 0.08)',
+            borderColor: 'rgba(239, 68, 68, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+          }}
+        >
+          <AlertTriangle style={{ color: 'var(--status-danger, #ef4444)', flexShrink: 0 }} size={24} />
+          <div>
+            <div style={{ fontWeight: 600, color: 'var(--status-danger, #ef4444)', fontSize: 14 }}>
+              Database Connection Notice
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+              Your application is live, but cannot reach the database yet. In Vercel, ensure you have added your Supabase <strong>Connection Pooler</strong> URL to <code>DATABASE_URL</code> and triggered a <strong>Redeploy</strong>.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SECTION 1: BUSINESS & COMMERCIAL OVERVIEW */}
       <div style={{ marginBottom: 24 }}>
