@@ -1,0 +1,883 @@
+// Prisma Schema for PrintXO Business Operating System (BOS)
+// Supports SQLite (default local) and PostgreSQL (Supabase production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 01. AUTHENTICATION & USERS
+// ==========================================
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String?
+  role          String    @default("OWNER") // OWNER, ADMIN, MANAGER, PRODUCTION, DESIGNER, QUALITY, SALES, FINANCE, VIEWER
+  avatar        String?
+  phone         String?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  assignedTasks Task[]    @relation("TaskAssignee")
+  auditLogs     AuditLog[]
+}
+
+// ==========================================
+// 02. CRM - CUSTOMERS & LEADS
+// ==========================================
+model Customer {
+  id                String    @id @default(cuid())
+  customerCode      String    @unique // e.g. CUST-001
+  name              String
+  company           String?
+  customerType      String    @default("B2B") // B2B, B2C, INSTITUTIONAL, MAKER
+  phone             String?
+  email             String?
+  address           String?
+  city              String?
+  state             String?
+  pincode           String?
+  country           String    @default("India")
+  gstin             String?
+  source            String?   // Website, Referral, Direct, Instagram, Exhibition
+  rating            Float     @default(5.0) // 1 to 5
+  status            String    @default("ACTIVE") // ACTIVE, INACTIVE, PROSPECT, BLOCKED
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  leads             Lead[]
+  quotes            Quote[]
+  orders            Order[]
+  invoices          Invoice[]
+  payments          Payment[]
+  complaints        Complaint[]
+  tasks             Task[]
+}
+
+model Lead {
+  id              String    @id @default(cuid())
+  leadCode        String    @unique // e.g. LEAD-001
+  name            String
+  company         String?
+  phone           String?
+  email           String?
+  source          String    @default("WEBSITE") // WEBSITE, WHATSAPP, REFERRAL, SOCIAL, EXHIBITION, OTHER
+  requirement     String?
+  budget          Float?
+  productInterest String?
+  status          String    @default("NEW") // NEW, CONTACTED, QUALIFIED, QUOTED, NEGOTIATION, WON, LOST
+  priority        String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  owner           String?
+  lastContact     DateTime?
+  nextFollowUp    DateTime?
+  lostReason      String?
+  notes           String?
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ==========================================
+// 03. QUOTATIONS
+// ==========================================
+model Quote {
+  id              String      @id @default(cuid())
+  quoteNumber     String      @unique // e.g. QTE-2026-0001
+  customerId      String
+  customer        Customer    @relation(fields: [customerId], references: [id])
+  date            DateTime    @default(now())
+  validUntil      DateTime
+  preparedBy      String?
+  currency        String      @default("INR")
+  paymentTerms    String?     @default("50% Advance, 50% Before Dispatch")
+  deliveryEstimate String?
+  notes           String?
+  status          String      @default("DRAFT") // DRAFT, SENT, VIEWED, NEGOTIATION, ACCEPTED, REJECTED, EXPIRED, CONVERTED
+  
+  // Cost & Price Breakdown
+  designCost      Float       @default(0)
+  cadCost         Float       @default(0)
+  materialCost    Float       @default(0)
+  printCost       Float       @default(0)
+  postProcessCost Float       @default(0)
+  packagingCost   Float       @default(0)
+  shippingCost    Float       @default(0)
+  otherCost       Float       @default(0)
+  
+  subtotal        Float       @default(0)
+  discountType    String      @default("PERCENT") // PERCENT, FIXED
+  discountValue   Float       @default(0)
+  discountTotal   Float       @default(0)
+  taxRate         Float       @default(18.0) // 18% GST default
+  taxAmount       Float       @default(0)
+  grandTotal      Float       @default(0)
+  estimatedCost   Float       @default(0)
+  estimatedProfit Float       @default(0)
+  marginPercent   Float       @default(0)
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items           QuoteItem[]
+  orders          Order[]
+}
+
+model QuoteItem {
+  id            String    @id @default(cuid())
+  quoteId       String
+  quote         Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product?  @relation(fields: [productId], references: [id])
+  name          String
+  description   String?
+  quantity      Int       @default(1)
+  unitPrice     Float     @default(0)
+  discount      Float     @default(0)
+  taxRate       Float     @default(18.0)
+  lineTotal     Float     @default(0)
+  material      String?
+  printTimeHours Float?
+  filamentGrams  Float?
+}
+
+// ==========================================
+// 04. ORDERS
+// ==========================================
+model Order {
+  id                String      @id @default(cuid())
+  orderNumber       String      @unique // e.g. ORD-2026-0001
+  customerId        String
+  customer          Customer    @relation(fields: [customerId], references: [id])
+  quoteId           String?
+  quote             Quote?      @relation(fields: [quoteId], references: [id])
+  orderDate         DateTime    @default(now())
+  dueDate           DateTime?
+  priority          String      @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  
+  subtotal          Float       @default(0)
+  discountTotal     Float       @default(0)
+  taxAmount         Float       @default(0)
+  shippingCost      Float       @default(0)
+  totalAmount       Float       @default(0)
+  
+  paymentStatus     String      @default("PENDING") // PENDING, PARTIAL, PAID, REFUNDED
+  productionStatus  String      @default("PENDING") // PENDING, SCHEDULED, IN_PROGRESS, COMPLETED, ON_HOLD
+  qcStatus          String      @default("PENDING") // PENDING, IN_INSPECTION, PASSED, FAILED, REWORK
+  shippingStatus    String      @default("PENDING") // PENDING, PACKED, SHIPPED, IN_TRANSIT, DELIVERED, RETURNED
+  overallStatus     String      @default("CONFIRMED") // DRAFT, CONFIRMED, IN_PRODUCTION, READY, DISPATCHED, DELIVERED, COMPLETED, CANCELLED
+  
+  shippingAddress   String?
+  notes             String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  items             OrderItem[]
+  printJobs         PrintJob[]
+  invoices          Invoice[]
+  shipments         Shipment[]
+  inspections       QualityInspection[]
+  complaints        Complaint[]
+  tasks             Task[]
+}
+
+model OrderItem {
+  id            String    @id @default(cuid())
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product?  @relation(fields: [productId], references: [id])
+  name          String
+  sku           String?
+  description   String?
+  quantity      Int       @default(1)
+  unitPrice     Float     @default(0)
+  discount      Float     @default(0)
+  taxRate       Float     @default(18.0)
+  lineTotal     Float     @default(0)
+  producedQty   Int       @default(0)
+  qcPassedQty   Int       @default(0)
+}
+
+// ==========================================
+// 05. PRODUCTS & DESIGN FILES
+// ==========================================
+model Product {
+  id              String    @id @default(cuid())
+  sku             String    @unique // e.g. PRX-PROD-001
+  name            String
+  category        String?   // Functional, Prototype, Aesthetic, Mechanical, Custom, Jig
+  productType     String    @default("STANDARD") // STANDARD, CUSTOM, RND_PROTOTYPE
+  description     String?
+  status          String    @default("ACTIVE") // ACTIVE, DEVELOPMENT, RETIRED, ARCHIVED
+  currentVersion  String    @default("1.0")
+  
+  // Manufacturing Defaults
+  materialName    String?
+  recommendedPrinter String?
+  nozzleSize      Float     @default(0.4)
+  layerHeight     Float     @default(0.2)
+  infillPercent   Int       @default(20)
+  wallCount       Int       @default(3)
+  supportRequired Boolean   @default(false)
+  standardPrintTimeHours Float @default(0)
+  standardFilamentGrams  Float @default(0)
+
+  // Commercials
+  sellingPrice    Float     @default(0)
+  productionCost  Float     @default(0)
+  estimatedMargin Float     @default(0)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  versions        ProductVersion[]
+  designFiles     DesignFile[]
+  quoteItems      QuoteItem[]
+  orderItems      OrderItem[]
+  printJobs       PrintJob[]
+  inspections     QualityInspection[]
+  complaints      Complaint[]
+  rndExperiments  RndExperiment[]
+  tasks           Task[]
+}
+
+model ProductVersion {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  version     String    // e.g. "1.0", "1.1", "2.0"
+  revision    Int       @default(1)
+  changeLog   String?
+  stlFileUrl  String?
+  threeMfUrl  String?
+  stepFileUrl String?
+  cadFileUrl  String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+}
+
+model DesignFile {
+  id          String    @id @default(cuid())
+  productId   String?
+  product     Product?  @relation(fields: [productId], references: [id])
+  fileName    String
+  fileType    String    // STL, 3MF, STEP, CAD, DRAWING, IMAGE, OTHER
+  fileUrl     String
+  fileSize    Int?
+  version     String    @default("1.0")
+  approval    String    @default("DRAFT") // DRAFT, REVIEW, APPROVED, PRODUCTION, RETIRED
+  approvedBy  String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+}
+
+// ==========================================
+// 06. PRINTERS (PRINT FARM)
+// ==========================================
+model Printer {
+  id              String    @id @default(cuid())
+  printerCode     String    @unique // e.g. PRT-001
+  name            String
+  manufacturer    String?   // Bambu Lab, Prusa, Creality, Voron, etc.
+  model           String?   // X1C, P1S, MK4, Ender 3, etc.
+  serialNumber    String?
+  purchaseDate    DateTime?
+  purchaseCost    Float     @default(0)
+  location        String?   // Farm Rack 1, Bench A, Enclosure 2
+  nozzleSize      Float     @default(0.4)
+  nozzleType      String?   @default("Hardened Steel") // Brass, Hardened Steel, Ruby
+  buildVolumeX    Float?
+  buildVolumeY    Float?
+  buildVolumeZ    Float?
+  status          String    @default("AVAILABLE") // AVAILABLE, PRINTING, MAINTENANCE, OFFLINE, CALIBRATION, ERROR
+  
+  // Lifetime Metrics
+  totalPrintHours Float     @default(0)
+  totalJobs       Int       @default(0)
+  successfulJobs  Int       @default(0)
+  failedJobs      Int       @default(0)
+  maintenanceCost Float     @default(0)
+  
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  printJobs       PrintJob[]
+  calibrations    Calibration[]
+  maintenances    PrinterMaintenance[]
+  tasks           Task[]
+}
+
+model PrinterMaintenance {
+  id              String    @id @default(cuid())
+  printerId       String
+  printer         Printer   @relation(fields: [printerId], references: [id])
+  maintenanceType String    // NOZZLE_CHANGE, BELT_TENSION, ROD_LUBRICATION, HOTEND_REPLACE, EXTRUDER_CLEAN, ROUTINE
+  description     String
+  cost            Float     @default(0)
+  performedBy     String?
+  performedAt     DateTime  @default(now())
+  nextDueAt       DateTime?
+  notes           String?
+}
+
+// ==========================================
+// 07. FILAMENT & MATERIALS
+// ==========================================
+model Material {
+  id              String    @id @default(cuid())
+  code            String    @unique // PLA, PETG, ABS, ASA, TPU, PA-CF, PC, etc.
+  name            String
+  densityGPerCm3  Float     @default(1.24)
+  defaultPrintTemp Int      @default(210)
+  defaultBedTemp   Int      @default(60)
+  notes           String?
+  createdAt       DateTime  @default(now())
+}
+
+model FilamentSpool {
+  id              String    @id @default(cuid())
+  spoolCode       String    @unique // e.g. SPL-PLA-001
+  brand           String    // Polymaker, eSun, Bambu Lab, Sunlu, Numakers
+  material        String    // PLA, PETG, ABS, TPU, etc.
+  series          String?   // PLA+, Matte, Silk, Carbon Fiber, Tough
+  color           String    // Black, White, Red, Grey, Transparent
+  colorHex        String?   @default("#000000")
+  diameter        Float     @default(1.75) // 1.75 or 2.85
+  initialWeightG  Float     @default(1000)
+  currentWeightG  Float     @default(1000)
+  usedWeightG     Float     @default(0)
+  wasteWeightG    Float     @default(0)
+  spoolCost       Float     @default(0)
+  costPerGram     Float     @default(0)
+  supplier        String?
+  purchaseDate    DateTime?
+  batchLotNumber  String?
+  storageLocation String?   // Drybox 1, Rack 2, Vacuum Bag 4
+  dryingStatus    String    @default("DRIED") // DRIED, NEEDS_DRYING, IN_DRYER
+  lastDriedAt     DateTime?
+  status          String    @default("IN_STOCK") // IN_STOCK, OPENED, IN_USE, LOW, EMPTY, DEFECTIVE, ARCHIVED
+  reorderLevelG   Float     @default(200)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  printJobs       PrintJob[]
+  rndExperiments  RndExperiment[]
+}
+
+// ==========================================
+// 08. CALIBRATION & PRINT PROFILES
+// ==========================================
+model Calibration {
+  id                String    @id @default(cuid())
+  calibrationCode   String    @unique // e.g. CAL-2026-001
+  printerId         String
+  printer           Printer   @relation(fields: [printerId], references: [id])
+  material          String    // PLA, PETG, etc.
+  brand             String?
+  nozzleSize        Float     @default(0.4)
+  calibrationType   String    // FIRST_LAYER, FLOW, TEMPERATURE, RETRACTION, PRESSURE_ADVANCE, DIMENSIONAL, OVERHANG, BRIDGING
+  parameterName     String
+  previousValue     String?
+  testValue         String?
+  measuredValue     String?
+  recommendedValue  String
+  tolerance         String?
+  result            String    @default("PASSED") // PASSED, FAILED, INCONCLUSIVE
+  operator          String?
+  approvalStatus    String    @default("APPROVED") // DRAFT, TESTING, APPROVED, ACTIVE, RETIRED
+  approvedBy        String?
+  date              DateTime  @default(now())
+  nextCalibrationDue DateTime?
+  notes             String?
+
+  printJobs         PrintJob[]
+  printProfiles     PrintProfile[]
+  rndExperiments    RndExperiment[]
+}
+
+model PrintProfile {
+  id                String    @id @default(cuid())
+  profileCode       String    @unique // e.g. PRF-BAMBU-PLA-FINE
+  name              String
+  printerModel      String?
+  material          String
+  nozzleSize        Float     @default(0.4)
+  layerHeight       Float     @default(0.2)
+  wallLoops         Int       @default(3)
+  topLayers         Int       @default(4)
+  bottomLayers      Int       @default(3)
+  infillPercent     Int       @default(20)
+  infillPattern     String    @default("Gyroid")
+  printSpeed        Int       @default(150)
+  nozzleTemp        Int       @default(215)
+  bedTemp           Int       @default(60)
+  coolingFanSpeed   Int       @default(100)
+  retractionDistance Float    @default(0.8)
+  retractionSpeed   Int       @default(30)
+  supportType       String?   @default("None") // None, Tree, Normal
+  slicerName        String    @default("OrcaSlicer")
+  slicerVersion     String?
+  version           String    @default("1.0")
+  status            String    @default("APPROVED") // DRAFT, TESTING, APPROVED, PRODUCTION, RETIRED
+  approvedBy        String?
+  calibrationId     String?
+  calibration       Calibration? @relation(fields: [calibrationId], references: [id])
+  
+  // Performance Tracking
+  totalPrints       Int       @default(0)
+  successfulPrints  Int       @default(0)
+  failedPrints      Int       @default(0)
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  printJobs         PrintJob[]
+  rndExperiments    RndExperiment[]
+}
+
+// ==========================================
+// 09. PRODUCTION & PRINT JOBS
+// ==========================================
+model PrintJob {
+  id                String        @id @default(cuid())
+  jobCode           String        @unique // e.g. JOB-2026-0001
+  orderId           String?
+  order             Order?        @relation(fields: [orderId], references: [id])
+  productId         String?
+  product           Product?      @relation(fields: [productId], references: [id])
+  printerId         String
+  printer           Printer       @relation(fields: [printerId], references: [id])
+  filamentSpoolId   String?
+  filamentSpool     FilamentSpool? @relation(fields: [filamentSpoolId], references: [id])
+  printProfileId    String?
+  printProfile      PrintProfile? @relation(fields: [printProfileId], references: [id])
+  calibrationId     String?
+  calibration       Calibration?  @relation(fields: [calibrationId], references: [id])
+  
+  operator          String?
+  quantity          Int           @default(1)
+  estimatedTimeHours Float        @default(0)
+  actualTimeHours   Float         @default(0)
+  estimatedFilamentG Float        @default(0)
+  actualFilamentG   Float         @default(0)
+  wasteFilamentG    Float         @default(0)
+  
+  startedAt         DateTime?
+  completedAt       DateTime?
+  status            String        @default("QUEUED") // QUEUED, SCHEDULED, PRINTING, PAUSED, COMPLETED, FAILED, CANCELLED, REPRINT
+  result            String?       // SUCCESS, FAILED_WARPING, FAILED_LAYER_SHIFT, FAILED_EXTRUSION, FAILED_POWER_LOSS
+  failureReason     String?
+  qcStatus          String        @default("PENDING") // PENDING, PASSED, FAILED, REWORK
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  inspections       QualityInspection[]
+}
+
+// ==========================================
+// 10. QUALITY MANAGEMENT & QC
+// ==========================================
+model QualityInspection {
+  id                String    @id @default(cuid())
+  qcCode            String    @unique // e.g. QC-2026-0001
+  orderId           String?
+  order             Order?    @relation(fields: [orderId], references: [id])
+  productId         String?
+  product           Product?  @relation(fields: [productId], references: [id])
+  printJobId        String?
+  printJob          PrintJob? @relation(fields: [printJobId], references: [id])
+  
+  inspector         String?
+  inspectionDate    DateTime  @default(now())
+  inspectionStage   String    @default("FINAL") // INCOMING, IN_PROCESS, FINAL, CUSTOMER_RETURN
+  specification     String?   // Dimensional Accuracy, Surface Finish, Weight, Strength
+  requiredValue     String?
+  actualValue       String?
+  tolerance         String?
+  result            String    @default("PASSED") // PASSED, FAILED, REWORK_REQUIRED
+  severity          String?   // MINOR, MAJOR, CRITICAL
+  defectType        String?   // LAYER_SHIFT, WARPING, STRINGING, UNDER_EXTRUSION, OVER_EXTRUSION, POOR_ADHESION, DIMENSIONAL, SURFACE, SUPPORT_FAILURE, CRACKING, WEAK_PART, COLOR_ISSUE
+  rootCause         String?
+  correctiveAction  String?
+  preventiveAction  String?
+  reworkRequired    Boolean   @default(false)
+  reprintRequired   Boolean   @default(false)
+  notes             String?
+  createdAt         DateTime  @default(now())
+
+  defects           Defect[]
+  capas             Capa[]
+}
+
+model Defect {
+  id                String    @id @default(cuid())
+  inspectionId      String?
+  inspection        QualityInspection? @relation(fields: [inspectionId], references: [id])
+  defectType        String    // LAYER_SHIFT, WARPING, STRINGING, etc.
+  description       String?
+  severity          String    @default("MINOR") // MINOR, MAJOR, CRITICAL
+  costImpact        Float     @default(0)
+  createdAt         DateTime  @default(now())
+}
+
+model Complaint {
+  id                String    @id @default(cuid())
+  complaintCode     String    @unique // e.g. CMP-2026-001
+  customerId        String
+  customer          Customer  @relation(fields: [customerId], references: [id])
+  orderId           String?
+  order             Order?    @relation(fields: [orderId], references: [id])
+  productId         String?
+  product           Product?  @relation(fields: [productId], references: [id])
+  date              DateTime  @default(now())
+  issueTitle        String
+  severity          String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  description       String
+  evidenceUrl       String?
+  status            String    @default("OPEN") // OPEN, INVESTIGATING, ACTION_REQUIRED, RESOLVED, CLOSED
+  owner             String?
+  resolution        String?
+  resolutionDate    DateTime?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  capas             Capa[]
+}
+
+model Capa {
+  id                String    @id @default(cuid())
+  capaCode          String    @unique // e.g. CAPA-2026-001
+  complaintId       String?
+  complaint         Complaint? @relation(fields: [complaintId], references: [id])
+  qcInspectionId    String?
+  qcInspection      QualityInspection? @relation(fields: [qcInspectionId], references: [id])
+  
+  problemStatement  String
+  containmentAction String?
+  rootCauseMethod   String?   @default("5_WHY") // 5_WHY, FISHBONE, ISHIKAWA
+  rootCauseAnalysis String?   // Detailed 5-why breakdown or fishbone
+  correctiveAction  String
+  preventiveAction  String
+  owner             String?
+  dueDate           DateTime?
+  verificationMethod String?
+  effectivenessCheck String?
+  status            String    @default("OPEN") // OPEN, IN_PROGRESS, PENDING_VERIFICATION, CLOSED
+  closureDate       DateTime?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tasks             Task[]
+}
+
+// ==========================================
+// 11. R&D / ENGINEERING WORKSPACE
+// ==========================================
+model RndProject {
+  id              String    @id @default(cuid())
+  projectCode     String    @unique // e.g. RND-2026-001
+  title           String
+  objective       String
+  status          String    @default("ACTIVE") // IDEA, ACTIVE, COMPLETED, ARCHIVED
+  leadScientist   String?
+  budget          Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  experiments     RndExperiment[]
+}
+
+model RndExperiment {
+  id              String    @id @default(cuid())
+  experimentCode  String    @unique // e.g. EXP-2026-0001
+  projectId       String?
+  project         RndProject? @relation(fields: [projectId], references: [id])
+  title           String
+  objective       String
+  hypothesis      String?
+  productId       String?
+  product         Product?  @relation(fields: [productId], references: [id])
+  material        String?
+  spoolId         String?
+  spool           FilamentSpool? @relation(fields: [spoolId], references: [id])
+  printProfileId  String?
+  printProfile    PrintProfile? @relation(fields: [printProfileId], references: [id])
+  calibrationId   String?
+  calibration     Calibration?  @relation(fields: [calibrationId], references: [id])
+  
+  variablesTested String?
+  controlValues   String?
+  testValues      String?
+  measurements    String?
+  resultsSummary  String?
+  failureOccurred Boolean   @default(false)
+  cost            Float     @default(0)
+  conclusion      String?
+  recommendedSettings String?
+  status          String    @default("IDEA") // IDEA, PLANNING, EXPERIMENTING, TESTING, ANALYZING, VALIDATED, IMPLEMENTED, REJECTED
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tasks           Task[]
+}
+
+// ==========================================
+// 12. SHIPPING & LOGISTICS
+// ==========================================
+model Shipment {
+  id              String    @id @default(cuid())
+  shipmentCode    String    @unique // e.g. SHP-2026-0001
+  orderId         String
+  order           Order     @relation(fields: [orderId], references: [id])
+  courierName     String    // Delhivery, DTDC, Blue Dart, Speed Post, Porter, Bluedart
+  trackingNumber  String?
+  trackingUrl     String?
+  shipDate        DateTime?
+  expectedDelivery DateTime?
+  deliveredDate   DateTime?
+  shippingCost    Float     @default(0)
+  status          String    @default("PENDING") // PENDING, PACKED, SHIPPED, IN_TRANSIT, DELIVERED, DELAYED, RETURNED
+  delayReason     String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ==========================================
+// 13. FINANCE, INVOICES & PAYMENTS
+// ==========================================
+model Invoice {
+  id              String        @id @default(cuid())
+  invoiceNumber   String        @unique // e.g. INV-2026-0001
+  orderId         String?
+  order           Order?        @relation(fields: [orderId], references: [id])
+  customerId      String
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  billingAddress  String?
+  shippingAddress String?
+  gstin           String?
+  invoiceDate     DateTime      @default(now())
+  dueDate         DateTime
+  paymentTerms    String?       @default("Due on Receipt")
+  
+  subtotal        Float         @default(0)
+  discountTotal   Float         @default(0)
+  taxableAmount   Float         @default(0)
+  cgstAmount      Float         @default(0) // 9% for intra-state default
+  sgstAmount      Float         @default(0) // 9% for intra-state default
+  igstAmount      Float         @default(0) // 18% for inter-state default
+  shippingAmount  Float         @default(0)
+  grandTotal      Float         @default(0)
+  amountPaid      Float         @default(0)
+  balanceDue      Float         @default(0)
+  
+  status          String        @default("DRAFT") // DRAFT, ISSUED, PARTIALLY_PAID, PAID, OVERDUE, CANCELLED
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  items           InvoiceItem[]
+  payments        Payment[]
+}
+
+model InvoiceItem {
+  id            String    @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description   String
+  hsnSacCode    String?   @default("8477") // 3D printing / manufacturing
+  quantity      Int       @default(1)
+  rate          Float     @default(0)
+  discount      Float     @default(0)
+  taxRate       Float     @default(18.0)
+  amount        Float     @default(0)
+}
+
+model Payment {
+  id            String    @id @default(cuid())
+  paymentCode   String    @unique // e.g. PAY-2026-0001
+  invoiceId     String?
+  invoice       Invoice?  @relation(fields: [invoiceId], references: [id])
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  amount        Float
+  paymentDate   DateTime  @default(now())
+  paymentMethod String    @default("UPI") // UPI, BANK_TRANSFER, CASH, CARD, RAZORPAY, OTHER
+  referenceNumber String? // UTR / Transaction ID
+  status        String    @default("CONFIRMED") // PENDING, CONFIRMED, FAILED, REFUNDED
+  notes         String?
+  createdAt     DateTime  @default(now())
+}
+
+model Expense {
+  id            String    @id @default(cuid())
+  expenseCode   String    @unique // e.g. EXP-2026-001
+  expenseDate   DateTime  @default(now())
+  category      String    // FILAMENT, MACHINE, ELECTRICITY, MAINTENANCE, PACKAGING, SHIPPING, MARKETING, SOFTWARE, LABOR, RENT, OTHER
+  description   String
+  supplierName  String?
+  amount        Float     @default(0)
+  taxAmount     Float     @default(0)
+  paymentMethod String    @default("UPI")
+  referenceNumber String?
+  isRecurring   Boolean   @default(false)
+  notes         String?
+  createdAt     DateTime  @default(now())
+}
+
+// ==========================================
+// 14. SUPPLIERS & INVENTORY
+// ==========================================
+model Supplier {
+  id            String    @id @default(cuid())
+  supplierCode  String    @unique // e.g. SUP-001
+  name          String
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  gstin         String?
+  category      String?   // Filament, Hardware, Electronics, Packaging, Consumables
+  rating        Float     @default(5.0)
+  leadTimeDays  Int       @default(3)
+  paymentTerms  String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  inventoryItems InventoryItem[]
+}
+
+model InventoryItem {
+  id            String    @id @default(cuid())
+  sku           String    @unique // e.g. INV-NOZ-04
+  itemName      String
+  category      String    // NOZZLES, BUILD_PLATES, CONSUMABLES, PACKAGING, SPARE_PARTS, TOOLS, CHEMICALS
+  quantity      Float     @default(0)
+  unit          String    @default("PCS") // PCS, ROLLS, BOXES, KG, LITRES
+  unitCost      Float     @default(0)
+  totalValue    Float     @default(0)
+  reorderLevel  Float     @default(5)
+  storageLocation String?
+  supplierId    String?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  status        String    @default("IN_STOCK") // IN_STOCK, LOW_STOCK, CRITICAL, OUT_OF_STOCK
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ==========================================
+// 15. TASKS, DOCUMENTS, SOPS
+// ==========================================
+model Task {
+  id              String    @id @default(cuid())
+  title           String
+  description     String?
+  assigneeId      String?
+  assignee        User?     @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  priority        String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status          String    @default("TODO") // TODO, IN_PROGRESS, BLOCKED, DONE
+  dueDate         DateTime?
+  
+  // Relations to other entities
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+  orderId         String?
+  order           Order?    @relation(fields: [orderId], references: [id])
+  productId       String?
+  product         Product?  @relation(fields: [productId], references: [id])
+  printerId       String?
+  printer         Printer?  @relation(fields: [printerId], references: [id])
+  capaId          String?
+  capa            Capa?     @relation(fields: [capaId], references: [id])
+  experimentId    String?
+  experiment      RndExperiment? @relation(fields: [experimentId], references: [id])
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model Document {
+  id              String    @id @default(cuid())
+  title           String
+  category        String    // QUOTE, INVOICE, ORDER, CAD, DRAWING, QC_REPORT, CALIBRATION, SOP, CUSTOMER_DOC
+  fileUrl         String
+  fileType        String?
+  fileSize        Int?
+  entityType      String?   // Customer, Order, Product, Printer, etc.
+  entityId        String?
+  uploadedBy      String?
+  createdAt       DateTime  @default(now())
+}
+
+model Sop {
+  id              String    @id @default(cuid())
+  sopCode         String    @unique // e.g. SOP-PRT-001
+  title           String
+  category        String    // PRINTING, CALIBRATION, QUALITY, MAINTENANCE, PACKAGING, SAFETY, OPERATIONS
+  purpose         String
+  scope           String?
+  procedureSteps  String    // Formatted markdown or JSON steps
+  requiredTools   String?
+  parameters      String?
+  qualityCriteria String?
+  revision        Int       @default(1)
+  owner           String?
+  approvalStatus  String    @default("APPROVED") // DRAFT, IN_REVIEW, APPROVED
+  approvedBy      String?
+  lastUpdated     DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+}
+
+// ==========================================
+// 16. NOTIFICATIONS & AUDIT LOGS
+// ==========================================
+model Notification {
+  id          String    @id @default(cuid())
+  type        String    // ORDER_OVERDUE, PAYMENT_DUE, LOW_STOCK, CALIBRATION_DUE, QC_FAILURE, CAPA_DUE, GENERAL
+  title       String
+  message     String
+  entityType  String?
+  entityId    String?
+  isRead      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  action      String    // CREATE, UPDATE, DELETE, STATUS_CHANGE
+  entity      String    // Customer, Order, Quote, Product, PrintJob, Invoice, etc.
+  entityId    String
+  oldValue    String?   // JSON representation
+  newValue    String?   // JSON representation
+  timestamp   DateTime  @default(now())
+}
+
+// ==========================================
+// 17. SYSTEM SETTINGS
+// ==========================================
+model Setting {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  value       String
+  category    String    @default("GENERAL") // GENERAL, PRICING, TAX, NOTIFICATIONS
+  description String?
+  updatedAt   DateTime  @updatedAt
+}
