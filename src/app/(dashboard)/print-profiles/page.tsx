@@ -38,6 +38,8 @@ export default function PrintProfilesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editProfileForm, setEditProfileForm] = useState<any>({});
 
   // Forms
   const [newProfileForm, setNewProfileForm] = useState({
@@ -95,6 +97,45 @@ export default function PrintProfilesPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEditProfile = (profile: any) => {
+    setEditProfileForm({
+      id: profile.id,
+      name: profile.name || '',
+      slicerName: profile.slicerName || '',
+      version: profile.version || '',
+      status: profile.status || 'PRODUCTION',
+      layerHeight: profile.layerHeight || 0.2,
+      printSpeed: profile.printSpeed || 100,
+      infillPercent: profile.infillPercent || 20,
+      infillPattern: profile.infillPattern || 'Gyroid',
+      nozzleTemp: profile.nozzleTemp || 220,
+      bedTemp: profile.bedTemp || 60,
+      wallCount: profile.wallCount || profile.wallLoops || 3,
+      notes: profile.notes || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/print-profiles/${editProfileForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editProfileForm),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        loadProfiles();
+      } else {
+        alert('Failed to update print profile');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating profile');
     }
   };
 
@@ -492,6 +533,20 @@ export default function PrintProfilesPage() {
                   View Parameters
                 </button>
                 <button
+                  onClick={() => handleOpenEditProfile(p)}
+                  style={{
+                    padding: '6px 8px',
+                    backgroundColor: 'var(--bg-surface-elevated)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 4,
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                  }}
+                  title="Edit Profile"
+                >
+                  <Edit2 size={14} />
+                </button>
+                <button
                   onClick={() => handleDeleteProfile(p.id)}
                   style={{
                     padding: '6px 8px',
@@ -850,6 +905,267 @@ export default function PrintProfilesPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* EDIT PROFILE MODAL */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Print Profile & Parameters"
+      >
+        <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Profile Name *
+            </label>
+            <input
+              type="text"
+              required
+              value={editProfileForm.name || ''}
+              onChange={(e) => setEditProfileForm({ ...editProfileForm, name: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Slicer Name
+              </label>
+              <input
+                type="text"
+                value={editProfileForm.slicerName || ''}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, slicerName: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Revision / Version
+              </label>
+              <input
+                type="text"
+                value={editProfileForm.version || ''}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, version: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Status
+              </label>
+              <select
+                value={editProfileForm.status || 'PRODUCTION'}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, status: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="PRODUCTION">PRODUCTION</option>
+                <option value="EXPERIMENTAL">EXPERIMENTAL</option>
+                <option value="APPROVED">APPROVED</option>
+                <option value="DEPRECATED">DEPRECATED</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Layer Height (mm)
+              </label>
+              <input
+                type="number"
+                step="0.02"
+                value={editProfileForm.layerHeight || ''}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, layerHeight: parseFloat(e.target.value) || 0.2 })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Print Speed (mm/s)
+              </label>
+              <input
+                type="number"
+                step="5"
+                value={editProfileForm.printSpeed || ''}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, printSpeed: parseInt(e.target.value) || 100 })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Wall Loops / Count
+              </label>
+              <input
+                type="number"
+                step="1"
+                value={editProfileForm.wallCount || ''}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, wallCount: parseInt(e.target.value) || 3 })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Infill (%)
+              </label>
+              <input
+                type="number"
+                step="1"
+                value={editProfileForm.infillPercent || ''}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, infillPercent: parseInt(e.target.value) || 20 })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Nozzle Temp (°C)
+              </label>
+              <input
+                type="number"
+                step="1"
+                value={editProfileForm.nozzleTemp || ''}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, nozzleTemp: parseInt(e.target.value) || 220 })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Bed Temp (°C)
+              </label>
+              <input
+                type="number"
+                step="1"
+                value={editProfileForm.bedTemp || ''}
+                onChange={(e) => setEditProfileForm({ ...editProfileForm, bedTemp: parseInt(e.target.value) || 60 })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Manufacturing Notes
+            </label>
+            <textarea
+              rows={2}
+              value={editProfileForm.notes || ''}
+              onChange={(e) => setEditProfileForm({ ...editProfileForm, notes: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+                resize: 'vertical',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: '8px 18px',
+                backgroundColor: 'var(--accent-red)',
+                border: 'none',
+                borderRadius: 4,
+                color: '#ffffff',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Save Profile Changes
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

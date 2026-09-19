@@ -40,6 +40,8 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
   const [isNewLeadOpen, setIsNewLeadOpen] = useState(false);
+  const [isEditLeadOpen, setIsEditLeadOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
   const [submitting, setSubmitting] = useState(false);
 
   // New Lead Form State
@@ -139,6 +141,63 @@ export default function LeadsPage() {
     }
   };
 
+  const handleOpenEditLead = (lead: any) => {
+    setEditFormData({
+      id: lead.id,
+      name: lead.name || '',
+      company: lead.company || '',
+      phone: lead.phone || '',
+      email: lead.email || '',
+      source: lead.source || 'WEBSITE',
+      priority: lead.priority || 'MEDIUM',
+      budget: lead.budget !== null && lead.budget !== undefined ? String(lead.budget) : '',
+      requirement: lead.requirement || '',
+      status: lead.status || 'NEW',
+      notes: lead.notes || '',
+    });
+    setIsEditLeadOpen(true);
+  };
+
+  const handleUpdateLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/crm/leads/${editFormData.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...editFormData,
+          budget: editFormData.budget ? parseFloat(editFormData.budget) : null,
+        }),
+      });
+      if (res.ok) {
+        setIsEditLeadOpen(false);
+        if (selectedLead?.id === editFormData.id) {
+          const updated = await res.json();
+          setSelectedLead(updated);
+        }
+        fetchLeads();
+      }
+    } catch (err) {
+      console.error('Update failed:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteLead = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this lead?')) return;
+    try {
+      const res = await fetch(`/api/crm/leads/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        if (selectedLead?.id === id) setSelectedLead(null);
+        fetchLeads();
+      }
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
+  };
+
   // Table columns definition
   const columns: Column<any>[] = [
     {
@@ -223,7 +282,7 @@ export default function LeadsPage() {
       key: 'actions',
       header: 'Actions',
       render: (item) => (
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           {item.status !== 'WON' && (
             <button
               onClick={() => handleConvertToCustomer(item.id)}
@@ -235,11 +294,28 @@ export default function LeadsPage() {
             </button>
           )}
           <button
-            onClick={() => setSelectedLead(item)}
+            onClick={() => handleOpenEditLead(item)}
             className="btn btn-ghost btn-sm"
-            style={{ padding: 4 }}
+            style={{ padding: '3px 6px', color: 'var(--text-secondary)' }}
+            title="Edit Lead"
           >
             <Edit2 size={13} />
+          </button>
+          <button
+            onClick={() => handleDeleteLead(item.id)}
+            className="btn btn-ghost btn-sm"
+            style={{ padding: '3px 6px', color: 'var(--status-danger, #ef4444)' }}
+            title="Delete Lead"
+          >
+            <Trash2 size={13} />
+          </button>
+          <button
+            onClick={() => setSelectedLead(item)}
+            className="btn btn-ghost btn-sm"
+            style={{ padding: '3px 8px', fontSize: 11 }}
+            title="View Details"
+          >
+            Details
           </button>
         </div>
       ),
@@ -491,6 +567,36 @@ export default function LeadsPage() {
                             onClick={(e) => e.stopPropagation()}
                             style={{ display: 'flex', alignItems: 'center', gap: 4 }}
                           >
+                            <button
+                              onClick={() => handleOpenEditLead(lead)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--text-secondary)',
+                                padding: '2px 4px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                              }}
+                              title="Edit Lead"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLead(lead.id)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--status-danger, #ef4444)',
+                                padding: '2px 4px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                              }}
+                              title="Delete Lead"
+                            >
+                              <Trash2 size={12} />
+                            </button>
                             {stage.key !== 'WON' && (
                               <button
                                 onClick={() => handleConvertToCustomer(lead.id)}
@@ -730,19 +836,36 @@ export default function LeadsPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 8,
                 paddingTop: 12,
                 borderTop: '1px solid var(--border-subtle)',
               }}
             >
-              <button
-                onClick={() => {
-                  handleConvertToCustomer(selectedLead.id);
-                  setSelectedLead(null);
-                }}
-                className="btn btn-primary btn-sm"
-              >
-                <UserCheck size={14} /> Convert to Permanent Customer
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => {
+                    handleConvertToCustomer(selectedLead.id);
+                    setSelectedLead(null);
+                  }}
+                  className="btn btn-primary btn-sm"
+                >
+                  <UserCheck size={14} /> Convert to Customer
+                </button>
+                <button
+                  onClick={() => handleOpenEditLead(selectedLead)}
+                  className="btn btn-secondary btn-sm"
+                >
+                  <Edit2 size={13} /> Edit Lead
+                </button>
+                <button
+                  onClick={() => handleDeleteLead(selectedLead.id)}
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--status-danger, #ef4444)' }}
+                >
+                  <Trash2 size={13} /> Delete
+                </button>
+              </div>
 
               <button
                 onClick={() => {
@@ -750,12 +873,129 @@ export default function LeadsPage() {
                 }}
                 className="btn btn-secondary btn-sm"
               >
-                Generate Quote for Lead →
+                Generate Quote →
               </button>
             </div>
           </div>
         </Modal>
       )}
+
+      {/* EDIT LEAD MODAL */}
+      <Modal
+        isOpen={isEditLeadOpen}
+        onClose={() => setIsEditLeadOpen(false)}
+        title={`Edit Lead (${editFormData.name || ''})`}
+      >
+        <form onSubmit={handleUpdateLead}>
+          <div className="form-group">
+            <label className="form-label">Client / Contact Name *</label>
+            <input
+              type="text"
+              required
+              className="form-control"
+              value={editFormData.name || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">Company / Organization</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editFormData.company || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, company: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Pipeline Stage</label>
+              <select
+                className="form-control"
+                value={editFormData.status || 'NEW'}
+                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+              >
+                {PIPELINE_STAGES.map((s) => (
+                  <option key={s.key} value={s.key}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">Phone Number</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editFormData.phone || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email Address</label>
+              <input
+                type="email"
+                className="form-control"
+                value={editFormData.email || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">Priority</label>
+              <select
+                className="form-control"
+                value={editFormData.priority || 'MEDIUM'}
+                onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value })}
+              >
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent / Rush</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Estimated Budget (₹)</label>
+              <input
+                type="number"
+                className="form-control"
+                value={editFormData.budget || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, budget: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Requirement Details</label>
+            <textarea
+              className="form-control"
+              rows={3}
+              value={editFormData.requirement || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, requirement: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsEditLeadOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={submitting}
+            >
+              {submitting ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

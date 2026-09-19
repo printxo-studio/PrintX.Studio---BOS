@@ -13,16 +13,21 @@ import {
   TrendingUp,
   FileCode,
   Tag,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
+import { Modal } from '@/components/ui/Modal';
 import { formatCurrency } from '@/lib/calculations';
 
 export default function ProductsCataloguePage() {
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
   const fetchProducts = async () => {
@@ -54,6 +59,58 @@ export default function ProductsCataloguePage() {
     categoryFilter === 'ALL'
       ? products
       : products.filter((p) => p.category?.toLowerCase().includes(categoryFilter.toLowerCase()));
+
+  const handleOpenEditProduct = (product: any) => {
+    setEditFormData({
+      id: product.id,
+      name: product.name || '',
+      sku: product.sku || '',
+      category: product.category || '',
+      materialName: product.materialName || '',
+      status: product.status || 'ACTIVE',
+      sellingPrice: product.sellingPrice || 0,
+      productionCost: product.productionCost || 0,
+      standardPrintTimeHours: product.standardPrintTimeHours || 0,
+      standardFilamentGrams: product.standardFilamentGrams || 0,
+      description: product.description || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/products/${editFormData.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        fetchProducts();
+      } else {
+        alert('Failed to update product');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating product');
+    }
+  };
+
+  const handleDeleteProduct = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete product "${name}"? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchProducts();
+      } else {
+        alert('Failed to delete product. It may have associated order items or print jobs.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting product');
+    }
+  };
 
   const columns: Column<any>[] = [
     {
@@ -160,17 +217,36 @@ export default function ProductsCataloguePage() {
     },
     {
       key: 'actions',
-      header: 'Action',
+      header: 'Actions',
       render: (item) => (
-        <Link
-          href={`/products/${item.id}`}
-          className="btn btn-secondary btn-sm"
-          style={{ fontSize: 11, padding: '3px 8px' }}
-        >
-          Specs & CAD <ArrowRight size={11} />
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Link
+            href={`/products/${item.id}`}
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: 11, padding: '4px 8px' }}
+            title="Specs & CAD"
+          >
+            Specs <ArrowRight size={11} />
+          </Link>
+          <button
+            onClick={() => handleOpenEditProduct(item)}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '4px 6px', color: 'var(--text-secondary)' }}
+            title="Edit Product"
+          >
+            <Edit2 size={13} />
+          </button>
+          <button
+            onClick={() => handleDeleteProduct(item.id, item.name)}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '4px 6px', color: 'var(--accent-red)' }}
+            title="Delete Product"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
       ),
-      width: '110px',
+      width: '180px',
     },
   ];
 
@@ -245,6 +321,153 @@ export default function ProductsCataloguePage() {
         searchKeys={['sku', 'name', 'category', 'materialName']}
         pageSize={10}
       />
+
+      {/* Edit Product Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Product & Specs"
+      >
+        <form onSubmit={handleUpdateProduct} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Product Name *</label>
+              <input
+                type="text"
+                className="input"
+                required
+                value={editFormData.name || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>SKU *</label>
+              <input
+                type="text"
+                className="input"
+                required
+                value={editFormData.sku || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
+                style={{ width: '100%', marginTop: 4, fontFamily: 'monospace' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Category</label>
+              <input
+                type="text"
+                className="input"
+                value={editFormData.category || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+                placeholder="e.g. Functional, Robotics"
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Material</label>
+              <input
+                type="text"
+                className="input"
+                value={editFormData.materialName || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, materialName: e.target.value })}
+                placeholder="e.g. PAHT-CF, PETG"
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Status</label>
+              <select
+                className="input"
+                value={editFormData.status || 'ACTIVE'}
+                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                style={{ width: '100%', marginTop: 4 }}
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="DEVELOPMENT">DEVELOPMENT</option>
+                <option value="DISCONTINUED">DISCONTINUED</option>
+                <option value="PROTOTYPE">PROTOTYPE</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Production Cost (₹)</label>
+              <input
+                type="number"
+                step="0.01"
+                className="input"
+                value={editFormData.productionCost || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, productionCost: parseFloat(e.target.value) || 0 })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Selling Price (₹)</label>
+              <input
+                type="number"
+                step="0.01"
+                className="input"
+                value={editFormData.sellingPrice || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, sellingPrice: parseFloat(e.target.value) || 0 })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Print Time (Hours)</label>
+              <input
+                type="number"
+                step="0.1"
+                className="input"
+                value={editFormData.standardPrintTimeHours || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, standardPrintTimeHours: parseFloat(e.target.value) || 0 })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Filament Weight (Grams)</label>
+              <input
+                type="number"
+                step="1"
+                className="input"
+                value={editFormData.standardFilamentGrams || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, standardFilamentGrams: parseFloat(e.target.value) || 0 })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Description / Notes</label>
+            <textarea
+              className="input"
+              rows={3}
+              value={editFormData.description || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+              style={{ width: '100%', marginTop: 4, resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm">
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -17,6 +17,8 @@ import {
   Sparkles,
   Calendar,
   Layers,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
@@ -41,9 +43,21 @@ export default function TasksPage() {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Forms
   const [newTaskForm, setNewTaskForm] = useState({
+    title: '',
+    description: '',
+    priority: 'HIGH',
+    status: 'TODO',
+    printerId: '',
+    orderId: '',
+    dueDate: '',
+  });
+
+  const [editTaskForm, setEditTaskForm] = useState({
+    id: '',
     title: '',
     description: '',
     priority: 'HIGH',
@@ -112,6 +126,57 @@ export default function TasksPage() {
       if (res.ok) loadData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEdit = (task: any) => {
+    setEditTaskForm({
+      id: task.id,
+      title: task.title || '',
+      description: task.description || '',
+      priority: task.priority || 'HIGH',
+      status: task.status || 'TODO',
+      printerId: task.printerId || '',
+      orderId: task.orderId || '',
+      dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/tasks/${editTaskForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editTaskForm),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update task');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating task');
+    }
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    try {
+      const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete task');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting task');
     }
   };
 
@@ -493,96 +558,133 @@ export default function TasksPage() {
                         )}
                       </div>
 
-                      {/* Move Controls */}
+                      {/* Move & Action Controls */}
                       <div
                         style={{
                           display: 'flex',
-                          justifyContent: 'flex-end',
-                          gap: 6,
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
                           paddingTop: 8,
                           borderTop: '1px solid var(--border-subtle)',
                           marginTop: 4,
                         }}
                       >
-                        {col.id === 'TODO' && (
+                        <div style={{ display: 'flex', gap: 4 }}>
                           <button
-                            onClick={() => handleUpdateStatus(task.id, 'IN_PROGRESS')}
+                            title="Edit Task"
+                            onClick={() => handleOpenEdit(task)}
                             style={{
-                              padding: '4px 8px',
+                              padding: '4px 6px',
                               backgroundColor: 'var(--bg-surface-elevated)',
                               border: '1px solid var(--border-subtle)',
                               borderRadius: 4,
-                              fontSize: 11,
                               color: 'var(--text-primary)',
                               cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
                             }}
                           >
-                            Start Task →
+                            <Edit2 size={11} />
                           </button>
-                        )}
-                        {col.id === 'IN_PROGRESS' && (
-                          <>
-                            <button
-                              onClick={() => handleUpdateStatus(task.id, 'BLOCKED')}
-                              style={{
-                                padding: '4px 8px',
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                borderRadius: 4,
-                                fontSize: 11,
-                                color: 'var(--accent-red)',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Block
-                            </button>
-                            <button
-                              onClick={() => handleUpdateStatus(task.id, 'DONE')}
-                              style={{
-                                padding: '4px 8px',
-                                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                                border: '1px solid rgba(16, 185, 129, 0.4)',
-                                borderRadius: 4,
-                                fontSize: 11,
-                                color: 'var(--accent-green, #10b981)',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Done ✓
-                            </button>
-                          </>
-                        )}
-                        {col.id === 'BLOCKED' && (
                           <button
-                            onClick={() => handleUpdateStatus(task.id, 'IN_PROGRESS')}
+                            title="Delete Task"
+                            onClick={() => handleDeleteTask(task.id)}
                             style={{
-                              padding: '4px 8px',
+                              padding: '4px 6px',
                               backgroundColor: 'var(--bg-surface-elevated)',
                               border: '1px solid var(--border-subtle)',
                               borderRadius: 4,
-                              fontSize: 11,
-                              color: 'var(--text-primary)',
+                              color: 'var(--accent-red)',
                               cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
                             }}
                           >
-                            Unblock →
+                            <Trash2 size={11} />
                           </button>
-                        )}
-                        {col.id === 'DONE' && (
-                          <button
-                            onClick={() => handleUpdateStatus(task.id, 'TODO')}
-                            style={{
-                              padding: '4px 8px',
-                              backgroundColor: 'transparent',
-                              border: 'none',
-                              fontSize: 11,
-                              color: 'var(--text-tertiary)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Reopen
-                          </button>
-                        )}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {col.id === 'TODO' && (
+                            <button
+                              onClick={() => handleUpdateStatus(task.id, 'IN_PROGRESS')}
+                              style={{
+                                padding: '4px 8px',
+                                backgroundColor: 'var(--bg-surface-elevated)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                color: 'var(--text-primary)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Start Task →
+                            </button>
+                          )}
+                          {col.id === 'IN_PROGRESS' && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateStatus(task.id, 'BLOCKED')}
+                                style={{
+                                  padding: '4px 8px',
+                                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                                  borderRadius: 4,
+                                  fontSize: 11,
+                                  color: 'var(--accent-red)',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Block
+                              </button>
+                              <button
+                                onClick={() => handleUpdateStatus(task.id, 'DONE')}
+                                style={{
+                                  padding: '4px 8px',
+                                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                                  borderRadius: 4,
+                                  fontSize: 11,
+                                  color: 'var(--accent-green, #10b981)',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Done ✓
+                              </button>
+                            </>
+                          )}
+                          {col.id === 'BLOCKED' && (
+                            <button
+                              onClick={() => handleUpdateStatus(task.id, 'IN_PROGRESS')}
+                              style={{
+                                padding: '4px 8px',
+                                backgroundColor: 'var(--bg-surface-elevated)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 4,
+                                fontSize: 11,
+                                color: 'var(--text-primary)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Unblock →
+                            </button>
+                          )}
+                          {col.id === 'DONE' && (
+                            <button
+                              onClick={() => handleUpdateStatus(task.id, 'TODO')}
+                              style={{
+                                padding: '4px 8px',
+                                backgroundColor: 'transparent',
+                                border: 'none',
+                                fontSize: 11,
+                                color: 'var(--text-tertiary)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Reopen
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -766,6 +868,231 @@ export default function TasksPage() {
             >
               Create Task
             </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT TASK MODAL */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Task Details"
+      >
+        <form onSubmit={handleUpdateTask} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Task Title
+            </label>
+            <input
+              type="text"
+              required
+              value={editTaskForm.title}
+              onChange={(e) => setEditTaskForm({ ...editTaskForm, title: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Description
+            </label>
+            <textarea
+              rows={3}
+              value={editTaskForm.description}
+              onChange={(e) => setEditTaskForm({ ...editTaskForm, description: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+                resize: 'none',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Priority
+              </label>
+              <select
+                value={editTaskForm.priority}
+                onChange={(e) => setEditTaskForm({ ...editTaskForm, priority: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="URGENT">URGENT</option>
+                <option value="HIGH">HIGH</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="LOW">LOW</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Status
+              </label>
+              <select
+                value={editTaskForm.status}
+                onChange={(e) => setEditTaskForm({ ...editTaskForm, status: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="TODO">To Do</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="BLOCKED">Blocked</option>
+                <option value="DONE">Completed</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Due Date
+              </label>
+              <input
+                type="date"
+                value={editTaskForm.dueDate}
+                onChange={(e) => setEditTaskForm({ ...editTaskForm, dueDate: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Associated Machine (Optional)
+              </label>
+              <select
+                value={editTaskForm.printerId}
+                onChange={(e) => setEditTaskForm({ ...editTaskForm, printerId: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="">None</option>
+                {printers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Associated Order (Optional)
+              </label>
+              <select
+                value={editTaskForm.orderId}
+                onChange={(e) => setEditTaskForm({ ...editTaskForm, orderId: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="">None</option>
+                {orders.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.orderNumber}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditModalOpen(false);
+                handleDeleteTask(editTaskForm.id);
+              }}
+              style={{
+                padding: '8px 14px',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 4,
+                color: 'var(--accent-red)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              <Trash2 size={14} />
+              Delete Task
+            </button>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={{
+                  padding: '8px 18px',
+                  backgroundColor: 'var(--accent-red)',
+                  border: 'none',
+                  borderRadius: 4,
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </form>
       </Modal>

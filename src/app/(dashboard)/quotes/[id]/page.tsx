@@ -14,11 +14,12 @@ import {
   Building,
   Calendar,
   DollarSign,
-  AlertCircle,
   Download,
   Trash2,
+  Edit2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Modal } from '@/components/ui/Modal';
 import { formatCurrency } from '@/lib/calculations';
 import { COMPANY_DETAILS } from '@/lib/constants';
 
@@ -29,6 +30,8 @@ export default function QuoteDetailPage() {
   const [settings, setSettings] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editQuoteForm, setEditQuoteForm] = useState<any>({});
 
   const fetchQuote = async () => {
     if (!params.id) return;
@@ -107,6 +110,53 @@ export default function QuoteDetailPage() {
       console.error(err);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleOpenEditQuote = () => {
+    if (!quote) return;
+    setEditQuoteForm({
+      status: quote.status || 'DRAFT',
+      notes: quote.notes || '',
+      validUntil: quote.validUntil ? new Date(quote.validUntil).toISOString().split('T')[0] : '',
+      paymentTerms: quote.paymentTerms || '',
+      deliveryEstimate: quote.deliveryEstimate || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateQuote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/quotes/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editQuoteForm),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        fetchQuote();
+      } else {
+        alert('Failed to update quote');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating quote');
+    }
+  };
+
+  const handleDeleteQuote = async () => {
+    if (!confirm(`Are you sure you want to delete quotation "${quote?.quoteNumber}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/quotes/${params.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/quotes');
+      } else {
+        alert('Failed to delete quotation');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting quotation');
     }
   };
 
@@ -241,6 +291,22 @@ export default function QuoteDetailPage() {
           >
             <Printer size={14} /> Print / PDF
           </Link>
+
+          <button
+            onClick={handleOpenEditQuote}
+            className="btn btn-secondary btn-sm"
+          >
+            <Edit2 size={14} /> Edit Quote
+          </button>
+
+          <button
+            onClick={handleDeleteQuote}
+            className="btn btn-secondary btn-sm"
+            style={{ color: 'var(--accent-red)', borderColor: 'var(--border-default)' }}
+            title="Delete Quote"
+          >
+            <Trash2 size={14} />
+          </button>
         </div>
       </div>
 
@@ -461,6 +527,103 @@ export default function QuoteDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit Quote Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit Quotation: ${quote?.quoteNumber || ''}`}
+      >
+        <form onSubmit={handleUpdateQuote} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Quote Status
+              </label>
+              <select
+                value={editQuoteForm.status || 'DRAFT'}
+                onChange={(e) => setEditQuoteForm({ ...editQuoteForm, status: e.target.value })}
+                className="input"
+                style={{ width: '100%' }}
+              >
+                <option value="DRAFT">DRAFT</option>
+                <option value="SENT">SENT</option>
+                <option value="VIEWED">VIEWED</option>
+                <option value="ACCEPTED">ACCEPTED</option>
+                <option value="REJECTED">REJECTED</option>
+                <option value="CONVERTED">CONVERTED</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Valid Until
+              </label>
+              <input
+                type="date"
+                className="input"
+                value={editQuoteForm.validUntil || ''}
+                onChange={(e) => setEditQuoteForm({ ...editQuoteForm, validUntil: e.target.value })}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Payment Terms
+              </label>
+              <input
+                type="text"
+                className="input"
+                value={editQuoteForm.paymentTerms || ''}
+                onChange={(e) => setEditQuoteForm({ ...editQuoteForm, paymentTerms: e.target.value })}
+                placeholder="e.g. 50% Advance, 50% on Dispatch"
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Delivery Estimate
+              </label>
+              <input
+                type="text"
+                className="input"
+                value={editQuoteForm.deliveryEstimate || ''}
+                onChange={(e) => setEditQuoteForm({ ...editQuoteForm, deliveryEstimate: e.target.value })}
+                placeholder="e.g. 3-5 Working Days"
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Notes / Terms
+            </label>
+            <textarea
+              className="input"
+              rows={3}
+              value={editQuoteForm.notes || ''}
+              onChange={(e) => setEditQuoteForm({ ...editQuoteForm, notes: e.target.value })}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm">
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

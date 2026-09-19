@@ -15,10 +15,13 @@ import {
   CreditCard,
   DollarSign,
   AlertTriangle,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
+import { Modal } from '@/components/ui/Modal';
 import { formatCurrency } from '@/lib/calculations';
 import { ORDER_STATUSES } from '@/lib/constants';
 
@@ -27,6 +30,8 @@ export default function OrdersListPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editOrderForm, setEditOrderForm] = useState<any>({});
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -46,6 +51,54 @@ export default function OrdersListPage() {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  const handleOpenEditOrder = (order: any) => {
+    setEditOrderForm({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      priority: order.priority || 'MEDIUM',
+      overallStatus: order.overallStatus || 'PENDING',
+      dueDate: order.dueDate ? new Date(order.dueDate).toISOString().split('T')[0] : '',
+      shippingAddress: order.shippingAddress || '',
+      notes: order.notes || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/orders/${editOrderForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editOrderForm),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        fetchOrders();
+      } else {
+        alert('Failed to update order');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating order');
+    }
+  };
+
+  const handleDeleteOrder = async (id: string, orderNumber: string) => {
+    if (!confirm(`Are you sure you want to delete order "${orderNumber}"? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchOrders();
+      } else {
+        alert('Failed to delete order. It may have associated print jobs or invoices.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting order');
+    }
+  };
 
   // Commercial & Operations KPIs
   const totalOrderValue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
@@ -153,17 +206,35 @@ export default function OrdersListPage() {
     },
     {
       key: 'actions',
-      header: 'Action',
+      header: 'Actions',
       render: (item) => (
-        <Link
-          href={`/orders/${item.id}`}
-          className="btn btn-secondary btn-sm"
-          style={{ fontSize: 11, padding: '3px 8px' }}
-        >
-          Manage <ArrowRight size={12} />
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Link
+            href={`/orders/${item.id}`}
+            className="btn btn-secondary btn-sm"
+            style={{ fontSize: 11, padding: '3px 8px' }}
+          >
+            Manage <ArrowRight size={12} />
+          </Link>
+          <button
+            onClick={() => handleOpenEditOrder(item)}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '4px 6px', color: 'var(--text-secondary)' }}
+            title="Edit Order"
+          >
+            <Edit2 size={13} />
+          </button>
+          <button
+            onClick={() => handleDeleteOrder(item.id, item.orderNumber)}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '4px 6px', color: 'var(--accent-red)' }}
+            title="Delete Order"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
       ),
-      width: '90px',
+      width: '160px',
     },
   ];
 
@@ -243,6 +314,101 @@ export default function OrdersListPage() {
         searchKeys={['orderNumber']}
         pageSize={10}
       />
+
+      {/* Edit Order Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit Order: ${editOrderForm.orderNumber || ''}`}
+      >
+        <form onSubmit={handleUpdateOrder} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Lifecycle Status
+              </label>
+              <select
+                value={editOrderForm.overallStatus || 'PENDING'}
+                onChange={(e) => setEditOrderForm({ ...editOrderForm, overallStatus: e.target.value })}
+                className="input"
+                style={{ width: '100%' }}
+              >
+                {ORDER_STATUSES.map((st) => (
+                  <option key={st.value} value={st.value}>{st.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Priority
+              </label>
+              <select
+                value={editOrderForm.priority || 'MEDIUM'}
+                onChange={(e) => setEditOrderForm({ ...editOrderForm, priority: e.target.value })}
+                className="input"
+                style={{ width: '100%' }}
+              >
+                <option value="LOW">LOW</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HIGH">HIGH</option>
+                <option value="URGENT">URGENT</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Target Due Date
+            </label>
+            <input
+              type="date"
+              className="input"
+              value={editOrderForm.dueDate || ''}
+              onChange={(e) => setEditOrderForm({ ...editOrderForm, dueDate: e.target.value })}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Shipping Address
+            </label>
+            <textarea
+              className="input"
+              rows={2}
+              value={editOrderForm.shippingAddress || ''}
+              onChange={(e) => setEditOrderForm({ ...editOrderForm, shippingAddress: e.target.value })}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Production & Delivery Notes
+            </label>
+            <textarea
+              className="input"
+              rows={2}
+              value={editOrderForm.notes || ''}
+              onChange={(e) => setEditOrderForm({ ...editOrderForm, notes: e.target.value })}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm">
+              Save Order Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

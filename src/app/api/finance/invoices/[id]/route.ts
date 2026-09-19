@@ -49,3 +49,17 @@ export async function PATCH(
     return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await db.invoice.delete({ where: { id: params.id } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Invoice delete error:', error);
+    return NextResponse.json({ error: 'Failed to delete invoice' }, { status: 500 });
+  }
+}
+

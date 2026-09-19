@@ -16,6 +16,8 @@ import {
   FileCode,
   Tag,
   GitBranch,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Modal } from '@/components/ui/Modal';
@@ -30,6 +32,8 @@ export default function ProductDetailPage() {
   const [isNewVersionModalOpen, setIsNewVersionModalOpen] = useState(false);
   const [versionForm, setVersionForm] = useState({ version: '', changeLog: '', stlFileUrl: '', threeMfUrl: '' });
   const [releasing, setReleasing] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
 
   const fetchProduct = async () => {
     if (!params.id) return;
@@ -73,7 +77,64 @@ export default function ProductDetailPage() {
     } catch (err) {
       console.error(err);
     } finally {
-      setReleasing(false);
+        setReleasing(false);
+    }
+  };
+
+  const handleOpenEditProduct = () => {
+    if (!product) return;
+    setEditFormData({
+      name: product.name || '',
+      sku: product.sku || '',
+      category: product.category || '',
+      materialName: product.materialName || '',
+      status: product.status || 'ACTIVE',
+      sellingPrice: product.sellingPrice || 0,
+      productionCost: product.productionCost || 0,
+      standardPrintTimeHours: product.standardPrintTimeHours || 0,
+      standardFilamentGrams: product.standardFilamentGrams || 0,
+      recommendedPrinter: product.recommendedPrinter || '',
+      nozzleSize: product.nozzleSize || 0.4,
+      layerHeight: product.layerHeight || 0.2,
+      infillPercent: product.infillPercent || 20,
+      wallCount: product.wallCount || 3,
+      description: product.description || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/products/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        fetchProduct();
+      } else {
+        alert('Failed to update product specs');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating product');
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!confirm(`Are you sure you want to delete product "${product.name}" (${product.sku})? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/products/${params.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/products');
+      } else {
+        alert('Failed to delete product. It may have associated order items or print jobs.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting product');
     }
   };
 
@@ -144,7 +205,13 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={handleOpenEditProduct}
+            className="btn btn-secondary btn-sm"
+          >
+            <Edit2 size={14} /> Edit Product
+          </button>
           {/* Section 12: Release New Revision Action */}
           <button
             onClick={() => setIsNewVersionModalOpen(true)}
@@ -157,6 +224,14 @@ export default function ProductDetailPage() {
             className="btn btn-primary btn-sm"
           >
             <Cpu size={14} /> Queue Print Job
+          </button>
+          <button
+            onClick={handleDeleteProduct}
+            className="btn btn-secondary btn-sm"
+            style={{ color: 'var(--accent-red)', borderColor: 'var(--border-default)' }}
+            title="Delete Product"
+          >
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
@@ -528,6 +603,173 @@ export default function ProductDetailPage() {
             </button>
             <button type="submit" className="btn btn-primary" disabled={releasing}>
               {releasing ? 'Releasing...' : 'Publish Revision →'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Product Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Product & Specs"
+      >
+        <form onSubmit={handleUpdateProduct} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Product Name *</label>
+              <input
+                type="text"
+                className="input"
+                required
+                value={editFormData.name || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>SKU *</label>
+              <input
+                type="text"
+                className="input"
+                required
+                value={editFormData.sku || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, sku: e.target.value })}
+                style={{ width: '100%', marginTop: 4, fontFamily: 'monospace' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Category</label>
+              <input
+                type="text"
+                className="input"
+                value={editFormData.category || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Material</label>
+              <input
+                type="text"
+                className="input"
+                value={editFormData.materialName || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, materialName: e.target.value })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Status</label>
+              <select
+                className="input"
+                value={editFormData.status || 'ACTIVE'}
+                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                style={{ width: '100%', marginTop: 4 }}
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="DEVELOPMENT">DEVELOPMENT</option>
+                <option value="DISCONTINUED">DISCONTINUED</option>
+                <option value="PROTOTYPE">PROTOTYPE</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Production Cost (₹)</label>
+              <input
+                type="number"
+                step="0.01"
+                className="input"
+                value={editFormData.productionCost || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, productionCost: parseFloat(e.target.value) || 0 })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Selling Price (₹)</label>
+              <input
+                type="number"
+                step="0.01"
+                className="input"
+                value={editFormData.sellingPrice || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, sellingPrice: parseFloat(e.target.value) || 0 })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Print Time (h)</label>
+              <input
+                type="number"
+                step="0.1"
+                className="input"
+                value={editFormData.standardPrintTimeHours || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, standardPrintTimeHours: parseFloat(e.target.value) || 0 })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Weight (g)</label>
+              <input
+                type="number"
+                step="1"
+                className="input"
+                value={editFormData.standardFilamentGrams || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, standardFilamentGrams: parseFloat(e.target.value) || 0 })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Nozzle (mm)</label>
+              <input
+                type="number"
+                step="0.1"
+                className="input"
+                value={editFormData.nozzleSize || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, nozzleSize: parseFloat(e.target.value) || 0.4 })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Layer (mm)</label>
+              <input
+                type="number"
+                step="0.02"
+                className="input"
+                value={editFormData.layerHeight || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, layerHeight: parseFloat(e.target.value) || 0.2 })}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Description / Specs Notes</label>
+            <textarea
+              className="input"
+              rows={3}
+              value={editFormData.description || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+              style={{ width: '100%', marginTop: 4, resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm">
+              Save Specs
             </button>
           </div>
         </form>

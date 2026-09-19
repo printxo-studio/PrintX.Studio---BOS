@@ -14,6 +14,8 @@ import {
   Flame,
   Settings2,
   Layers,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
@@ -28,7 +30,9 @@ export default function PrinterFarmPage() {
   // Modals
   const [isAddPrinterOpen, setIsAddPrinterOpen] = useState(false);
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
+  const [isEditPrinterOpen, setIsEditPrinterOpen] = useState(false);
   const [selectedPrinter, setSelectedPrinter] = useState<any | null>(null);
+  const [editPrinterForm, setEditPrinterForm] = useState<any>({});
 
   // Forms
   const [newPrinterForm, setNewPrinterForm] = useState({
@@ -113,6 +117,58 @@ export default function PrinterFarmPage() {
       loadPrinters();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEditPrinter = (printer: any) => {
+    setEditPrinterForm({
+      id: printer.id,
+      name: printer.name || '',
+      model: printer.model || '',
+      serialNumber: printer.serialNumber || '',
+      location: printer.location || '',
+      status: printer.status || 'AVAILABLE',
+      nozzleSize: printer.nozzleSize || 0.4,
+      nozzleType: printer.nozzleType || 'Hardened Steel',
+      hourlyCostRate: printer.hourlyCostRate || 65,
+      ipAddress: printer.ipAddress || '',
+      notes: printer.notes || '',
+    });
+    setIsEditPrinterOpen(true);
+  };
+
+  const handleUpdatePrinter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/printers/${editPrinterForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editPrinterForm),
+      });
+      if (res.ok) {
+        setIsEditPrinterOpen(false);
+        loadPrinters();
+      } else {
+        alert('Failed to update printer');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating printer');
+    }
+  };
+
+  const handleDeletePrinter = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete printer "${name}"? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/printers/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadPrinters();
+      } else {
+        alert('Failed to delete printer. It may have associated print jobs or maintenance history.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting printer');
     }
   };
 
@@ -311,13 +367,31 @@ export default function PrinterFarmPage() {
                   <Wrench size={12} /> Log Service
                 </button>
 
-                <button
-                  onClick={() => router.push(`/production/new-job?printerId=${prt.id}`)}
-                  className="btn btn-primary btn-sm"
-                  style={{ fontSize: 11, padding: '3px 8px' }}
-                >
-                  <Plus size={12} /> Dispatch Job
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    onClick={() => handleOpenEditPrinter(prt)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: 11, padding: '3px 7px', color: 'var(--text-secondary)' }}
+                    title="Edit Printer"
+                  >
+                    <Edit2 size={12} />
+                  </button>
+                  <button
+                    onClick={() => handleDeletePrinter(prt.id, prt.name)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: 11, padding: '3px 7px', color: 'var(--accent-red)' }}
+                    title="Delete Printer"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                  <button
+                    onClick={() => router.push(`/production/new-job?printerId=${prt.id}`)}
+                    className="btn btn-primary btn-sm"
+                    style={{ fontSize: 11, padding: '3px 8px' }}
+                  >
+                    <Plus size={12} /> Dispatch
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -475,6 +549,139 @@ export default function PrinterFarmPage() {
           </form>
         </Modal>
       )}
+
+      {/* EDIT PRINTER MODAL */}
+      <Modal
+        isOpen={isEditPrinterOpen}
+        onClose={() => setIsEditPrinterOpen(false)}
+        title="Edit Printer Hardware & Settings"
+      >
+        <form onSubmit={handleUpdatePrinter}>
+          <div className="form-group">
+            <label className="form-label">Printer Name / Identifier *</label>
+            <input
+              type="text"
+              required
+              className="form-control"
+              value={editPrinterForm.name || ''}
+              onChange={(e) => setEditPrinterForm({ ...editPrinterForm, name: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="form-group">
+              <label className="form-label">Model</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editPrinterForm.model || ''}
+                onChange={(e) => setEditPrinterForm({ ...editPrinterForm, model: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Serial Number</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editPrinterForm.serialNumber || ''}
+                onChange={(e) => setEditPrinterForm({ ...editPrinterForm, serialNumber: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="form-group">
+              <label className="form-label">Location / Rack</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editPrinterForm.location || ''}
+                onChange={(e) => setEditPrinterForm({ ...editPrinterForm, location: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select
+                className="form-control"
+                value={editPrinterForm.status || 'AVAILABLE'}
+                onChange={(e) => setEditPrinterForm({ ...editPrinterForm, status: e.target.value })}
+              >
+                <option value="AVAILABLE">Available</option>
+                <option value="PRINTING">Printing</option>
+                <option value="MAINTENANCE">Maintenance</option>
+                <option value="CALIBRATION">Calibration</option>
+                <option value="OFFLINE">Offline</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+            <div className="form-group">
+              <label className="form-label">Nozzle Size (mm)</label>
+              <input
+                type="number"
+                step="0.1"
+                className="form-control"
+                value={editPrinterForm.nozzleSize || ''}
+                onChange={(e) => setEditPrinterForm({ ...editPrinterForm, nozzleSize: parseFloat(e.target.value) || 0.4 })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Nozzle Type</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editPrinterForm.nozzleType || ''}
+                onChange={(e) => setEditPrinterForm({ ...editPrinterForm, nozzleType: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Hourly Rate (₹/h)</label>
+              <input
+                type="number"
+                step="1"
+                className="form-control"
+                value={editPrinterForm.hourlyCostRate || ''}
+                onChange={(e) => setEditPrinterForm({ ...editPrinterForm, hourlyCostRate: parseFloat(e.target.value) || 65 })}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">IP Address / Webhook</label>
+            <input
+              type="text"
+              className="form-control"
+              value={editPrinterForm.ipAddress || ''}
+              onChange={(e) => setEditPrinterForm({ ...editPrinterForm, ipAddress: e.target.value })}
+              placeholder="e.g. 192.168.1.55"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Notes</label>
+            <textarea
+              className="form-control"
+              rows={2}
+              value={editPrinterForm.notes || ''}
+              onChange={(e) => setEditPrinterForm({ ...editPrinterForm, notes: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsEditPrinterOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

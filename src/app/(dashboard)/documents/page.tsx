@@ -21,6 +21,8 @@ import {
   Tag,
   Check,
   Download,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
@@ -49,8 +51,12 @@ export default function DocumentsPage() {
 
   // Modals
   const [isAddSopOpen, setIsAddSopOpen] = useState(false);
+  const [isEditSopOpen, setIsEditSopOpen] = useState(false);
   const [selectedSop, setSelectedSop] = useState<any | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  const [isAddDocOpen, setIsAddDocOpen] = useState(false);
+  const [isEditDocOpen, setIsEditDocOpen] = useState(false);
 
   // Forms
   const [newSopForm, setNewSopForm] = useState({
@@ -69,6 +75,36 @@ export default function DocumentsPage() {
     qualityCriteria: 'Zero visible watermarks or grease smears. Water contact angle > 60°.',
     revision: '1',
     owner: 'PrintXO Quality Lead',
+  });
+
+  const [editSopForm, setEditSopForm] = useState({
+    id: '',
+    title: '',
+    category: 'PRINTING',
+    purpose: '',
+    scope: '',
+    procedureSteps: '',
+    requiredTools: '',
+    parameters: '',
+    qualityCriteria: '',
+    revision: '1',
+    owner: '',
+    approvalStatus: 'APPROVED',
+  });
+
+  const [newDocForm, setNewDocForm] = useState({
+    title: '',
+    category: 'CAD',
+    fileType: 'STEP',
+    fileSize: '4200000',
+    uploadedBy: 'PrintXO Engineer',
+  });
+
+  const [editDocForm, setEditDocForm] = useState({
+    id: '',
+    title: '',
+    category: 'CAD',
+    uploadedBy: 'PrintXO Engineer',
   });
 
   const loadData = async () => {
@@ -106,6 +142,143 @@ export default function DocumentsPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEditSop = (sop: any) => {
+    setEditSopForm({
+      id: sop.id,
+      title: sop.title || '',
+      category: sop.category || 'PRINTING',
+      purpose: sop.purpose || '',
+      scope: sop.scope || '',
+      procedureSteps: sop.procedureSteps || '',
+      requiredTools: sop.requiredTools || '',
+      parameters: sop.parameters || '',
+      qualityCriteria: sop.qualityCriteria || '',
+      revision: String(sop.revision ?? 1),
+      owner: sop.owner || '',
+      approvalStatus: sop.approvalStatus || 'APPROVED',
+    });
+    setIsEditSopOpen(true);
+  };
+
+  const handleUpdateSop = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/sops/${editSopForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editSopForm),
+      });
+      if (res.ok) {
+        setIsEditSopOpen(false);
+        if (selectedSop?.id === editSopForm.id) {
+          setSelectedSop({ ...selectedSop, ...editSopForm });
+        }
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update SOP');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating SOP');
+    }
+  };
+
+  const handleDeleteSop = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this Standard Operating Procedure?')) return;
+    try {
+      const res = await fetch(`/api/sops/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        if (selectedSop?.id === id) {
+          setIsDetailModalOpen(false);
+          setSelectedSop(null);
+        }
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete SOP');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting SOP');
+    }
+  };
+
+  const handleCreateDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newDocForm),
+      });
+      if (res.ok) {
+        setIsAddDocOpen(false);
+        setNewDocForm({
+          title: '',
+          category: 'CAD',
+          fileType: 'STEP',
+          fileSize: '4200000',
+          uploadedBy: 'PrintXO Engineer',
+        });
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to create document');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error creating document');
+    }
+  };
+
+  const handleOpenEditDoc = (doc: any) => {
+    setEditDocForm({
+      id: doc.id,
+      title: doc.title || doc.name || '',
+      category: doc.category || doc.type || 'CAD',
+      uploadedBy: doc.uploadedBy || 'PrintXO Engineer',
+    });
+    setIsEditDocOpen(true);
+  };
+
+  const handleUpdateDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/documents/${editDocForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editDocForm),
+      });
+      if (res.ok) {
+        setIsEditDocOpen(false);
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update document');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating document');
+    }
+  };
+
+  const handleDeleteDoc = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this CAD document?')) return;
+    try {
+      const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete document');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting document');
     }
   };
 
@@ -448,24 +621,56 @@ export default function DocumentsPage() {
                       Owner: {sop.owner}
                     </span>
 
-                    <button
-                      onClick={() => {
-                        setSelectedSop(sop);
-                        setIsDetailModalOpen(true);
-                      }}
-                      style={{
-                        padding: '6px 14px',
-                        backgroundColor: 'var(--bg-surface-elevated)',
-                        border: '1px solid var(--border-subtle)',
-                        borderRadius: 4,
-                        fontSize: 12,
-                        color: 'var(--text-primary)',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                      }}
-                    >
-                      Read Full SOP →
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        title="Edit SOP"
+                        onClick={() => handleOpenEditSop(sop)}
+                        style={{
+                          padding: '6px 8px',
+                          backgroundColor: 'var(--bg-surface-elevated)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 4,
+                          fontSize: 12,
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        title="Delete SOP"
+                        onClick={() => handleDeleteSop(sop.id)}
+                        style={{
+                          padding: '6px 8px',
+                          backgroundColor: 'var(--bg-surface-elevated)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 4,
+                          fontSize: 12,
+                          color: 'var(--accent-red)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedSop(sop);
+                          setIsDetailModalOpen(true);
+                        }}
+                        style={{
+                          padding: '6px 14px',
+                          backgroundColor: 'var(--bg-surface-elevated)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 4,
+                          fontSize: 12,
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Read Full SOP →
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -487,60 +692,157 @@ export default function DocumentsPage() {
             gap: 16,
           }}
         >
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-            Section 25: Engineering CAD & Technical Drawings
-          </h3>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            Authoritative revision-controlled STEP solids, STL surface meshes, and inspection blueprint drawings.
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                Section 25: Engineering CAD & Technical Drawings
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
+                Authoritative revision-controlled STEP solids, STL surface meshes, and inspection blueprint drawings.
+              </p>
+            </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
-            {[
-              { code: 'CAD-ARM-V1.2', name: 'Quadcopter Arm (PRX-AERO-ARM-V1)', type: 'STEP Solid', size: '4.2 MB', rev: 'v1.2', date: '12 Sep 2026' },
-              { code: 'STL-ARM-0.16', name: 'Slicer Mesh - 0.16mm Layer Optimized', type: '3MF Mesh', size: '12.8 MB', rev: 'v1.2', date: '12 Sep 2026' },
-              { code: 'CAD-BRK-V2.0', name: 'Robotics Dual Bracket (PRX-ROBO-BRK-V2)', type: 'STEP Solid', size: '2.8 MB', rev: 'v2.0', date: '10 Sep 2026' },
-              { code: 'DRW-TOL-001', name: 'Mounting Flange GD&T Blueprint', type: 'PDF Drawing', size: '1.1 MB', rev: 'v1.0', date: '08 Sep 2026' },
-            ].map((doc) => (
-              <div
-                key={doc.code}
-                style={{
-                  backgroundColor: 'var(--bg-canvas)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: 14,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--accent-red)' }}>
-                    {doc.code}
-                  </span>
-                  <span
+            <button
+              onClick={() => setIsAddDocOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 16px',
+                backgroundColor: 'var(--accent-red)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <Plus size={15} />
+              Register CAD Document
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14 }}>
+            {documents.length > 0
+              ? documents.map((doc) => (
+                  <div
+                    key={doc.id}
                     style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      backgroundColor: 'var(--bg-surface-elevated)',
-                      color: 'var(--text-secondary)',
+                      backgroundColor: 'var(--bg-canvas)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: 14,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
                     }}
                   >
-                    {doc.type}
-                  </span>
-                </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--accent-red)' }}>
+                        {doc.fileType || 'CAD'}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          backgroundColor: 'var(--bg-surface-elevated)',
+                          color: 'var(--text-secondary)',
+                        }}
+                      >
+                        {doc.category || 'CAD'}
+                      </span>
+                    </div>
 
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {doc.name}
-                </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {doc.title}
+                    </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
-                  <span>Revision {doc.rev} • {doc.size}</span>
-                  <span>{doc.date}</span>
-                </div>
-              </div>
-            ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                      <span>By: {doc.uploadedBy || 'Engineer'}</span>
+                      <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, paddingTop: 8, borderTop: '1px solid var(--border-subtle)', marginTop: 4 }}>
+                      <button
+                        title="Edit Document"
+                        onClick={() => handleOpenEditDoc(doc)}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: 'var(--bg-surface-elevated)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 4,
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                      <button
+                        title="Delete Document"
+                        onClick={() => handleDeleteDoc(doc.id)}
+                        style={{
+                          padding: '4px 8px',
+                          backgroundColor: 'var(--bg-surface-elevated)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: 4,
+                          color: 'var(--accent-red)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              : [
+                  { code: 'CAD-ARM-V1.2', name: 'Quadcopter Arm (PRX-AERO-ARM-V1)', type: 'STEP Solid', size: '4.2 MB', rev: 'v1.2', date: '12 Sep 2026' },
+                  { code: 'STL-ARM-0.16', name: 'Slicer Mesh - 0.16mm Layer Optimized', type: '3MF Mesh', size: '12.8 MB', rev: 'v1.2', date: '12 Sep 2026' },
+                  { code: 'CAD-BRK-V2.0', name: 'Robotics Dual Bracket (PRX-ROBO-BRK-V2)', type: 'STEP Solid', size: '2.8 MB', rev: 'v2.0', date: '10 Sep 2026' },
+                  { code: 'DRW-TOL-001', name: 'Mounting Flange GD&T Blueprint', type: 'PDF Drawing', size: '1.1 MB', rev: 'v1.0', date: '08 Sep 2026' },
+                ].map((doc) => (
+                  <div
+                    key={doc.code}
+                    style={{
+                      backgroundColor: 'var(--bg-canvas)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: 14,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: 'var(--accent-red)' }}>
+                        {doc.code}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          backgroundColor: 'var(--bg-surface-elevated)',
+                          color: 'var(--text-secondary)',
+                        }}
+                      >
+                        {doc.type}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {doc.name}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>
+                      <span>Revision {doc.rev} • {doc.size}</span>
+                      <span>{doc.date}</span>
+                    </div>
+                  </div>
+                ))}
           </div>
         </div>
       )}
@@ -628,21 +930,68 @@ export default function DocumentsPage() {
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
               <button
                 type="button"
-                onClick={() => setIsDetailModalOpen(false)}
+                onClick={() => handleDeleteSop(selectedSop.id)}
                 style={{
-                  padding: '8px 18px',
-                  backgroundColor: 'var(--bg-surface-elevated)',
-                  border: '1px solid var(--border-subtle)',
+                  padding: '8px 14px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
                   borderRadius: 4,
-                  color: 'var(--text-primary)',
+                  color: 'var(--accent-red)',
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
                 }}
               >
-                Close
+                <Trash2 size={13} />
+                Delete SOP
               </button>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDetailModalOpen(false);
+                    handleOpenEditSop(selectedSop);
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: 'var(--bg-surface-elevated)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 4,
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  <Edit2 size={13} />
+                  Edit SOP
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsDetailModalOpen(false)}
+                  style={{
+                    padding: '8px 18px',
+                    backgroundColor: 'var(--bg-surface-elevated)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 4,
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -831,6 +1180,499 @@ export default function DocumentsPage() {
             >
               Publish SOP
             </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT SOP MODAL */}
+      <Modal
+        isOpen={isEditSopOpen}
+        onClose={() => setIsEditSopOpen(false)}
+        title="Edit Standard Operating Procedure"
+      >
+        <form onSubmit={handleUpdateSop} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              SOP Title
+            </label>
+            <input
+              type="text"
+              required
+              value={editSopForm.title}
+              onChange={(e) => setEditSopForm({ ...editSopForm, title: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Category
+              </label>
+              <select
+                value={editSopForm.category}
+                onChange={(e) => setEditSopForm({ ...editSopForm, category: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {SOP_CATEGORIES.filter((c) => c.id !== 'ALL').map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Revision
+              </label>
+              <input
+                type="text"
+                value={editSopForm.revision}
+                onChange={(e) => setEditSopForm({ ...editSopForm, revision: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Approval Status
+              </label>
+              <select
+                value={editSopForm.approvalStatus}
+                onChange={(e) => setEditSopForm({ ...editSopForm, approvalStatus: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="APPROVED">APPROVED</option>
+                <option value="DRAFT">DRAFT</option>
+                <option value="PENDING_REVIEW">PENDING_REVIEW</option>
+                <option value="ARCHIVED">ARCHIVED</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Purpose & Objective
+            </label>
+            <textarea
+              rows={2}
+              value={editSopForm.purpose}
+              onChange={(e) => setEditSopForm({ ...editSopForm, purpose: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+                resize: 'none',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Step-by-Step Procedure Instructions
+            </label>
+            <textarea
+              rows={5}
+              value={editSopForm.procedureSteps}
+              onChange={(e) => setEditSopForm({ ...editSopForm, procedureSteps: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+                resize: 'none',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Required Tools
+              </label>
+              <input
+                type="text"
+                value={editSopForm.requiredTools}
+                onChange={(e) => setEditSopForm({ ...editSopForm, requiredTools: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Quality Acceptance Criteria
+              </label>
+              <input
+                type="text"
+                value={editSopForm.qualityCriteria}
+                onChange={(e) => setEditSopForm({ ...editSopForm, qualityCriteria: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditSopOpen(false);
+                handleDeleteSop(editSopForm.id);
+              }}
+              style={{
+                padding: '8px 14px',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 4,
+                color: 'var(--accent-red)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              <Trash2 size={14} />
+              Delete SOP
+            </button>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setIsEditSopOpen(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={{
+                  padding: '8px 18px',
+                  backgroundColor: 'var(--accent-red)',
+                  border: 'none',
+                  borderRadius: 4,
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ADD CAD DOCUMENT MODAL */}
+      <Modal
+        isOpen={isAddDocOpen}
+        onClose={() => setIsAddDocOpen(false)}
+        title="Register CAD / Engineering Drawing"
+      >
+        <form onSubmit={handleCreateDoc} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Document / Model Name
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Quadcopter Drone Arm V2"
+              value={newDocForm.title}
+              onChange={(e) => setNewDocForm({ ...newDocForm, title: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                File Type
+              </label>
+              <select
+                value={newDocForm.fileType}
+                onChange={(e) => setNewDocForm({ ...newDocForm, fileType: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="STEP">STEP Solid (.step/.stp)</option>
+                <option value="STL">STL Mesh (.stl)</option>
+                <option value="3MF">3MF Project (.3mf)</option>
+                <option value="PDF">PDF Engineering Drawing (.pdf)</option>
+                <option value="DXF">DXF Flat Pattern (.dxf)</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Category
+              </label>
+              <select
+                value={newDocForm.category}
+                onChange={(e) => setNewDocForm({ ...newDocForm, category: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="CAD">CAD 3D Models</option>
+                <option value="DRAWINGS">2D Technical Drawings</option>
+                <option value="SLICER">Slicer 3MF Projects</option>
+                <option value="SPEC_SHEETS">Datasheets & Specs</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Uploaded / Maintained By
+            </label>
+            <input
+              type="text"
+              value={newDocForm.uploadedBy}
+              onChange={(e) => setNewDocForm({ ...newDocForm, uploadedBy: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => setIsAddDocOpen(false)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: '8px 18px',
+                backgroundColor: 'var(--accent-red)',
+                border: 'none',
+                borderRadius: 4,
+                color: '#ffffff',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Register Document
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT CAD DOCUMENT MODAL */}
+      <Modal
+        isOpen={isEditDocOpen}
+        onClose={() => setIsEditDocOpen(false)}
+        title="Edit CAD Document Record"
+      >
+        <form onSubmit={handleUpdateDoc} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Document Title
+            </label>
+            <input
+              type="text"
+              required
+              value={editDocForm.title}
+              onChange={(e) => setEditDocForm({ ...editDocForm, title: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Category
+              </label>
+              <select
+                value={editDocForm.category}
+                onChange={(e) => setEditDocForm({ ...editDocForm, category: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="CAD">CAD 3D Models</option>
+                <option value="DRAWINGS">2D Technical Drawings</option>
+                <option value="SLICER">Slicer 3MF Projects</option>
+                <option value="SPEC_SHEETS">Datasheets & Specs</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Maintained By
+              </label>
+              <input
+                type="text"
+                value={editDocForm.uploadedBy}
+                onChange={(e) => setEditDocForm({ ...editDocForm, uploadedBy: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditDocOpen(false);
+                handleDeleteDoc(editDocForm.id);
+              }}
+              style={{
+                padding: '8px 14px',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 4,
+                color: 'var(--accent-red)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              <Trash2 size={14} />
+              Delete Document
+            </button>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setIsEditDocOpen(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={{
+                  padding: '8px 18px',
+                  backgroundColor: 'var(--accent-red)',
+                  border: 'none',
+                  borderRadius: 4,
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </form>
       </Modal>

@@ -63,10 +63,15 @@ export async function PATCH(
     const updated = await db.printer.update({
       where: { id: params.id },
       data: {
+        ...(body.name && { name: body.name }),
+        ...(body.model && { model: body.model }),
+        ...(body.serialNumber !== undefined && { serialNumber: body.serialNumber }),
         ...(body.status && { status: body.status }),
         ...(body.location !== undefined && { location: body.location }),
         ...(body.nozzleSize !== undefined && { nozzleSize: parseFloat(body.nozzleSize) }),
         ...(body.nozzleType !== undefined && { nozzleType: body.nozzleType }),
+        ...(body.hourlyCostRate !== undefined && { hourlyCostRate: parseFloat(body.hourlyCostRate) }),
+        ...(body.ipAddress !== undefined && { ipAddress: body.ipAddress }),
         ...(body.notes !== undefined && { notes: body.notes }),
       },
     });

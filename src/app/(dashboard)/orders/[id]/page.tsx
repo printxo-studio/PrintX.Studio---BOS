@@ -17,11 +17,13 @@ import {
   Clock,
   ArrowRight,
   Printer,
-  CheckCircle2,
   AlertCircle,
   Plus,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Modal } from '@/components/ui/Modal';
 import { formatCurrency } from '@/lib/calculations';
 import { ORDER_STATUSES } from '@/lib/constants';
 
@@ -32,6 +34,8 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState<'items' | 'jobs' | 'qc' | 'invoices' | 'shipment'>('items');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editOrderForm, setEditOrderForm] = useState<any>({});
 
   const fetchOrder = async () => {
     if (!params.id) return;
@@ -87,6 +91,53 @@ export default function OrderDetailPage() {
       console.error(err);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleOpenEditOrder = () => {
+    if (!order) return;
+    setEditOrderForm({
+      priority: order.priority || 'MEDIUM',
+      overallStatus: order.overallStatus || 'PENDING',
+      dueDate: order.dueDate ? new Date(order.dueDate).toISOString().split('T')[0] : '',
+      shippingAddress: order.shippingAddress || '',
+      notes: order.notes || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/orders/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editOrderForm),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        fetchOrder();
+      } else {
+        alert('Failed to update order');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating order');
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!confirm(`Are you sure you want to delete order "${order?.orderNumber}"? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/orders/${params.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/orders');
+      } else {
+        alert('Failed to delete order. It may have associated print jobs or invoices.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting order');
     }
   };
 
@@ -201,6 +252,22 @@ export default function OrderDetailPage() {
             className="btn btn-secondary btn-sm"
           >
             <Cpu size={14} /> Queue Print Job
+          </button>
+
+          <button
+            onClick={handleOpenEditOrder}
+            className="btn btn-secondary btn-sm"
+          >
+            <Edit2 size={14} /> Edit Order
+          </button>
+
+          <button
+            onClick={handleDeleteOrder}
+            className="btn btn-secondary btn-sm"
+            style={{ color: 'var(--accent-red)', borderColor: 'var(--border-default)' }}
+            title="Delete Order"
+          >
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
@@ -681,6 +748,101 @@ export default function OrderDetailPage() {
           )}
         </div>
       )}
+
+      {/* Edit Order Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit Order: ${order?.orderNumber || ''}`}
+      >
+        <form onSubmit={handleUpdateOrder} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Lifecycle Status
+              </label>
+              <select
+                value={editOrderForm.overallStatus || 'PENDING'}
+                onChange={(e) => setEditOrderForm({ ...editOrderForm, overallStatus: e.target.value })}
+                className="input"
+                style={{ width: '100%' }}
+              >
+                {ORDER_STATUSES.map((st) => (
+                  <option key={st.value} value={st.value}>{st.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Priority
+              </label>
+              <select
+                value={editOrderForm.priority || 'MEDIUM'}
+                onChange={(e) => setEditOrderForm({ ...editOrderForm, priority: e.target.value })}
+                className="input"
+                style={{ width: '100%' }}
+              >
+                <option value="LOW">LOW</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HIGH">HIGH</option>
+                <option value="URGENT">URGENT</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Target Due Date
+            </label>
+            <input
+              type="date"
+              className="input"
+              value={editOrderForm.dueDate || ''}
+              onChange={(e) => setEditOrderForm({ ...editOrderForm, dueDate: e.target.value })}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Shipping Address
+            </label>
+            <textarea
+              className="input"
+              rows={2}
+              value={editOrderForm.shippingAddress || ''}
+              onChange={(e) => setEditOrderForm({ ...editOrderForm, shippingAddress: e.target.value })}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Production & Delivery Notes
+            </label>
+            <textarea
+              className="input"
+              rows={2}
+              value={editOrderForm.notes || ''}
+              onChange={(e) => setEditOrderForm({ ...editOrderForm, notes: e.target.value })}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm">
+              Save Order Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

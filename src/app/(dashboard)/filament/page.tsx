@@ -65,7 +65,9 @@ export default function FilamentPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isWeighModalOpen, setIsWeighModalOpen] = useState(false);
   const [isDryModalOpen, setIsDryModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedSpool, setSelectedSpool] = useState<FilamentSpool | null>(null);
+  const [editSpoolForm, setEditSpoolForm] = useState<any>({});
 
   // Forms
   const [newSpoolForm, setNewSpoolForm] = useState({
@@ -158,6 +160,45 @@ export default function FilamentPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEditSpool = (spool: any) => {
+    setEditSpoolForm({
+      id: spool.id,
+      spoolCode: spool.spoolCode || '',
+      brand: spool.brand || '',
+      material: spool.material || '',
+      colorName: spool.color || '',
+      colorHex: spool.colorHex || '#18181b',
+      currentWeightG: spool.currentWeightG || 0,
+      initialWeightG: spool.initialWeightG || 1000,
+      costPerSpool: spool.spoolCost || 0,
+      status: spool.status || 'ACTIVE',
+      dryingStatus: spool.dryingStatus || 'DRIED',
+      storageLocation: spool.storageLocation || '',
+      reorderLevelG: spool.reorderLevelG || 200,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateSpool = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/filament/${editSpoolForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editSpoolForm),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        loadSpools();
+      } else {
+        alert('Failed to update spool');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating spool');
     }
   };
 
@@ -645,6 +686,21 @@ export default function FilamentPage() {
                           </button>
 
                           <button
+                            title="Edit Spool Details"
+                            onClick={() => handleOpenEditSpool(spool)}
+                            style={{
+                              padding: '5px 8px',
+                              backgroundColor: 'var(--bg-surface-elevated)',
+                              border: '1px solid var(--border-subtle)',
+                              borderRadius: 4,
+                              color: 'var(--text-secondary)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <Edit2 size={14} />
+                          </button>
+
+                          <button
                             title="Delete Spool"
                             onClick={() => handleDeleteSpool(spool.id)}
                             style={{
@@ -1024,6 +1080,250 @@ export default function FilamentPage() {
               }}
             >
               Save Drying State
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT SPOOL MODAL */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Spool Details & Stock"
+      >
+        <form onSubmit={handleUpdateSpool} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Spool Code / ID *
+              </label>
+              <input
+                type="text"
+                required
+                value={editSpoolForm.spoolCode || ''}
+                onChange={(e) => setEditSpoolForm({ ...editSpoolForm, spoolCode: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                  fontFamily: 'monospace',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Brand / Manufacturer *
+              </label>
+              <input
+                type="text"
+                required
+                value={editSpoolForm.brand || ''}
+                onChange={(e) => setEditSpoolForm({ ...editSpoolForm, brand: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Material *
+              </label>
+              <input
+                type="text"
+                required
+                value={editSpoolForm.material || ''}
+                onChange={(e) => setEditSpoolForm({ ...editSpoolForm, material: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Color Name
+              </label>
+              <input
+                type="text"
+                value={editSpoolForm.colorName || ''}
+                onChange={(e) => setEditSpoolForm({ ...editSpoolForm, colorName: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Status
+              </label>
+              <select
+                value={editSpoolForm.status || 'ACTIVE'}
+                onChange={(e) => setEditSpoolForm({ ...editSpoolForm, status: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {FILAMENT_STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Current Weight (g) *
+              </label>
+              <input
+                type="number"
+                required
+                value={editSpoolForm.currentWeightG || ''}
+                onChange={(e) => setEditSpoolForm({ ...editSpoolForm, currentWeightG: parseFloat(e.target.value) || 0 })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Initial Weight (g)
+              </label>
+              <input
+                type="number"
+                value={editSpoolForm.initialWeightG || ''}
+                onChange={(e) => setEditSpoolForm({ ...editSpoolForm, initialWeightG: parseFloat(e.target.value) || 1000 })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Spool Cost (₹)
+              </label>
+              <input
+                type="number"
+                value={editSpoolForm.costPerSpool || ''}
+                onChange={(e) => setEditSpoolForm({ ...editSpoolForm, costPerSpool: parseFloat(e.target.value) || 0 })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Drying Status
+              </label>
+              <select
+                value={editSpoolForm.dryingStatus || 'DRIED'}
+                onChange={(e) => setEditSpoolForm({ ...editSpoolForm, dryingStatus: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="DRIED">DRIED</option>
+                <option value="IN_DRYER">IN_DRYER</option>
+                <option value="NEEDS_DRYING">NEEDS_DRYING</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Storage Location
+              </label>
+              <input
+                type="text"
+                value={editSpoolForm.storageLocation || ''}
+                onChange={(e) => setEditSpoolForm({ ...editSpoolForm, storageLocation: e.target.value })}
+                placeholder="e.g. Drybox Rack A1"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: '8px 18px',
+                backgroundColor: 'var(--accent-red)',
+                border: 'none',
+                borderRadius: 4,
+                color: '#ffffff',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Save Spool Changes
             </button>
           </div>
         </form>

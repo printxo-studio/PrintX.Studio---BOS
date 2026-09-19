@@ -20,6 +20,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Calendar,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
@@ -54,6 +56,8 @@ export default function CalibrationsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedCal, setSelectedCal] = useState<any | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editCalForm, setEditCalForm] = useState<any>({});
 
   // Forms
   const [newCalForm, setNewCalForm] = useState({
@@ -131,6 +135,52 @@ export default function CalibrationsPage() {
       if (res.ok) loadData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEditCal = (cal: any) => {
+    setEditCalForm({
+      id: cal.id,
+      calibrationType: cal.calibrationType || 'PRESSURE_ADVANCE',
+      filamentMaterial: cal.material || cal.filamentMaterial || 'PA-CF',
+      recommendedValue: cal.recommendedValue || '',
+      measuredValue: cal.measuredValue || '',
+      result: cal.result || 'PASSED',
+      approvalStatus: cal.approvalStatus || 'APPROVED',
+      approvedBy: cal.approvedBy || '',
+      notes: cal.notes || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateCal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/calibrations/${editCalForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editCalForm),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        loadData();
+      } else {
+        alert('Failed to update calibration');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating calibration');
+    }
+  };
+
+  const handleDeleteCal = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this calibration record?')) return;
+    try {
+      const res = await fetch(`/api/calibrations/${id}`, { method: 'DELETE' });
+      if (res.ok) loadData();
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting calibration');
     }
   };
 
@@ -560,6 +610,36 @@ export default function CalibrationsPage() {
                         >
                           Details
                         </button>
+
+                        <button
+                          title="Edit Calibration"
+                          onClick={() => handleOpenEditCal(cal)}
+                          style={{
+                            padding: '5px 8px',
+                            backgroundColor: 'var(--bg-surface-elevated)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 4,
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Edit2 size={13} />
+                        </button>
+
+                        <button
+                          title="Delete Calibration"
+                          onClick={() => handleDeleteCal(cal.id)}
+                          style={{
+                            padding: '5px 8px',
+                            backgroundColor: 'var(--bg-surface-elevated)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 4,
+                            color: 'var(--accent-red)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -960,6 +1040,193 @@ export default function CalibrationsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* EDIT CALIBRATION MODAL */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Calibration Record"
+      >
+        <form onSubmit={handleUpdateCal} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Calibration Type
+              </label>
+              <select
+                value={editCalForm.calibrationType || 'PRESSURE_ADVANCE'}
+                onChange={(e) => setEditCalForm({ ...editCalForm, calibrationType: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {CALIBRATION_TYPES.filter((t) => t.id !== 'ALL').map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Material
+              </label>
+              <input
+                type="text"
+                value={editCalForm.filamentMaterial || ''}
+                onChange={(e) => setEditCalForm({ ...editCalForm, filamentMaterial: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Recommended Value *
+              </label>
+              <input
+                type="text"
+                required
+                value={editCalForm.recommendedValue || ''}
+                onChange={(e) => setEditCalForm({ ...editCalForm, recommendedValue: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Measured Value
+              </label>
+              <input
+                type="text"
+                value={editCalForm.measuredValue || ''}
+                onChange={(e) => setEditCalForm({ ...editCalForm, measuredValue: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Result
+              </label>
+              <select
+                value={editCalForm.result || 'PASSED'}
+                onChange={(e) => setEditCalForm({ ...editCalForm, result: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="PASSED">PASSED</option>
+                <option value="FAILED">FAILED</option>
+                <option value="INCONCLUSIVE">INCONCLUSIVE</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Approval Status
+              </label>
+              <select
+                value={editCalForm.approvalStatus || 'APPROVED'}
+                onChange={(e) => setEditCalForm({ ...editCalForm, approvalStatus: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="APPROVED">APPROVED</option>
+                <option value="PENDING">PENDING</option>
+                <option value="REJECTED">REJECTED</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Notes
+            </label>
+            <textarea
+              rows={2}
+              value={editCalForm.notes || ''}
+              onChange={(e) => setEditCalForm({ ...editCalForm, notes: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+                resize: 'vertical',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: '8px 18px',
+                backgroundColor: 'var(--accent-red)',
+                border: 'none',
+                borderRadius: 4,
+                color: '#ffffff',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Save Calibration
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

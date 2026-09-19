@@ -15,6 +15,8 @@ import {
   FileText,
   Building,
   Receipt,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -34,6 +36,8 @@ export default function FinanceHubPage() {
   // Modals
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isEditInvoiceOpen, setIsEditInvoiceOpen] = useState(false);
+  const [isEditExpenseOpen, setIsEditExpenseOpen] = useState(false);
 
   // Form states
   const [paymentForm, setPaymentForm] = useState({
@@ -46,6 +50,23 @@ export default function FinanceHubPage() {
   });
 
   const [expenseForm, setExpenseForm] = useState({
+    category: 'FILAMENT',
+    amount: '',
+    description: '',
+    supplierName: '',
+    paymentMethod: 'UPI',
+    referenceNumber: '',
+  });
+
+  const [editInvoiceForm, setEditInvoiceForm] = useState({
+    id: '',
+    status: 'ISSUED',
+    dueDate: '',
+    notes: '',
+  });
+
+  const [editExpenseForm, setEditExpenseForm] = useState({
+    id: '',
     category: 'FILAMENT',
     amount: '',
     description: '',
@@ -127,6 +148,119 @@ export default function FinanceHubPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEditInvoice = (inv: any) => {
+    setEditInvoiceForm({
+      id: inv.id,
+      status: inv.status || 'ISSUED',
+      dueDate: inv.dueDate ? new Date(inv.dueDate).toISOString().split('T')[0] : '',
+      notes: inv.notes || '',
+    });
+    setIsEditInvoiceOpen(true);
+  };
+
+  const handleUpdateInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/finance/invoices/${editInvoiceForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editInvoiceForm),
+      });
+      if (res.ok) {
+        setIsEditInvoiceOpen(false);
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update invoice');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating invoice');
+    }
+  };
+
+  const handleDeleteInvoice = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this invoice? Linked payment records may prevent deletion.')) return;
+    try {
+      const res = await fetch(`/api/finance/invoices/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete invoice');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting invoice');
+    }
+  };
+
+  const handleDeletePayment = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this payment record?')) return;
+    try {
+      const res = await fetch(`/api/finance/payments/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete payment');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting payment');
+    }
+  };
+
+  const handleOpenEditExpense = (exp: any) => {
+    setEditExpenseForm({
+      id: exp.id,
+      category: exp.category || 'FILAMENT',
+      amount: String(exp.amount ?? ''),
+      description: exp.description || '',
+      supplierName: exp.supplierName || '',
+      paymentMethod: exp.paymentMethod || 'UPI',
+      referenceNumber: exp.referenceNumber || '',
+    });
+    setIsEditExpenseOpen(true);
+  };
+
+  const handleUpdateExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/finance/expenses/${editExpenseForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editExpenseForm),
+      });
+      if (res.ok) {
+        setIsEditExpenseOpen(false);
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update expense');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating expense');
+    }
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this expense record?')) return;
+    try {
+      const res = await fetch(`/api/finance/expenses/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete expense');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting expense');
     }
   };
 
@@ -242,9 +376,25 @@ export default function FinanceHubPage() {
           >
             <Printer size={13} />
           </Link>
+          <button
+            onClick={() => handleOpenEditInvoice(item)}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '4px 6px' }}
+            title="Edit Invoice"
+          >
+            <Edit2 size={13} />
+          </button>
+          <button
+            onClick={() => handleDeleteInvoice(item.id)}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '4px 6px', color: 'var(--status-danger)' }}
+            title="Delete Invoice"
+          >
+            <Trash2 size={13} />
+          </button>
         </div>
       ),
-      width: '110px',
+      width: '160px',
     },
   ];
 
@@ -311,6 +461,23 @@ export default function FinanceHubPage() {
       render: (item) => <StatusBadge status={item.status} />,
       width: '100px',
     },
+    {
+      key: 'actions',
+      header: 'Action',
+      render: (item) => (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => handleDeletePayment(item.id)}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '4px 6px', color: 'var(--status-danger)' }}
+            title="Delete Payment Record"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      ),
+      width: '80px',
+    },
   ];
 
   // Expense Columns
@@ -359,6 +526,31 @@ export default function FinanceHubPage() {
       ),
       sortable: true,
       width: '110px',
+    },
+    {
+      key: 'actions',
+      header: 'Action',
+      render: (item) => (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => handleOpenEditExpense(item)}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '4px 6px' }}
+            title="Edit Expense"
+          >
+            <Edit2 size={13} />
+          </button>
+          <button
+            onClick={() => handleDeleteExpense(item.id)}
+            className="btn btn-secondary btn-sm"
+            style={{ padding: '4px 6px', color: 'var(--status-danger)' }}
+            title="Delete Expense Record"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      ),
+      width: '100px',
     },
   ];
 
@@ -670,6 +862,194 @@ export default function FinanceHubPage() {
             <button type="submit" className="btn btn-primary">
               Log Expense
             </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT INVOICE MODAL */}
+      <Modal
+        isOpen={isEditInvoiceOpen}
+        onClose={() => setIsEditInvoiceOpen(false)}
+        title="Edit Invoice Details"
+      >
+        <form onSubmit={handleUpdateInvoice}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="form-group">
+              <label className="form-label">Invoice Status *</label>
+              <select
+                className="form-control"
+                value={editInvoiceForm.status}
+                onChange={(e) => setEditInvoiceForm({ ...editInvoiceForm, status: e.target.value })}
+              >
+                <option value="DRAFT">DRAFT</option>
+                <option value="ISSUED">ISSUED</option>
+                <option value="PARTIALLY_PAID">PARTIALLY_PAID</option>
+                <option value="PAID">PAID</option>
+                <option value="OVERDUE">OVERDUE</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Due Date</label>
+              <input
+                type="date"
+                className="form-control"
+                value={editInvoiceForm.dueDate}
+                onChange={(e) => setEditInvoiceForm({ ...editInvoiceForm, dueDate: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Internal Notes / Terms</label>
+            <textarea
+              className="form-control"
+              rows={2}
+              value={editInvoiceForm.notes}
+              onChange={(e) => setEditInvoiceForm({ ...editInvoiceForm, notes: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ color: 'var(--status-danger)' }}
+              onClick={() => {
+                setIsEditInvoiceOpen(false);
+                handleDeleteInvoice(editInvoiceForm.id);
+              }}
+            >
+              <Trash2 size={13} style={{ marginRight: 6 }} /> Delete Invoice
+            </button>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setIsEditInvoiceOpen(false)}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Save Invoice
+              </button>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT EXPENSE MODAL */}
+      <Modal
+        isOpen={isEditExpenseOpen}
+        onClose={() => setIsEditExpenseOpen(false)}
+        title="Edit Operational Expense"
+      >
+        <form onSubmit={handleUpdateExpense}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="form-group">
+              <label className="form-label">Expense Category *</label>
+              <select
+                className="form-control"
+                value={editExpenseForm.category}
+                onChange={(e) => setEditExpenseForm({ ...editExpenseForm, category: e.target.value })}
+              >
+                <option value="FILAMENT">Filament & Materials</option>
+                <option value="MACHINE">Machine Parts & Nozzles</option>
+                <option value="ELECTRICITY">Electricity & Power</option>
+                <option value="MAINTENANCE">Maintenance & Service</option>
+                <option value="PACKAGING">Packaging Materials</option>
+                <option value="SHIPPING">Shipping & Freight</option>
+                <option value="MARKETING">Marketing & Advertising</option>
+                <option value="RENT">Workshop Rent</option>
+                <option value="OTHER">Other Operational Expense</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Amount (₹) *</label>
+              <input
+                type="number"
+                required
+                className="form-control"
+                value={editExpenseForm.amount}
+                onChange={(e) => setEditExpenseForm({ ...editExpenseForm, amount: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Description *</label>
+            <input
+              type="text"
+              required
+              className="form-control"
+              value={editExpenseForm.description}
+              onChange={(e) => setEditExpenseForm({ ...editExpenseForm, description: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="form-group">
+              <label className="form-label">Supplier / Vendor Name</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editExpenseForm.supplierName}
+                onChange={(e) => setEditExpenseForm({ ...editExpenseForm, supplierName: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Payment Method</label>
+              <select
+                className="form-control"
+                value={editExpenseForm.paymentMethod}
+                onChange={(e) => setEditExpenseForm({ ...editExpenseForm, paymentMethod: e.target.value })}
+              >
+                <option value="UPI">UPI</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="CARD">Card</option>
+                <option value="CASH">Cash</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Reference Number (UTR / Receipt)</label>
+            <input
+              type="text"
+              className="form-control"
+              value={editExpenseForm.referenceNumber}
+              onChange={(e) => setEditExpenseForm({ ...editExpenseForm, referenceNumber: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ color: 'var(--status-danger)' }}
+              onClick={() => {
+                setIsEditExpenseOpen(false);
+                handleDeleteExpense(editExpenseForm.id);
+              }}
+            >
+              <Trash2 size={13} style={{ marginRight: 6 }} /> Delete Expense
+            </button>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setIsEditExpenseOpen(false)}
+              >
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary">
+                Save Changes
+              </button>
+            </div>
           </div>
         </form>
       </Modal>

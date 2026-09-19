@@ -31,6 +31,7 @@ export async function PATCH(
       where: { id: params.id },
       data: {
         ...(body.name && { name: body.name }),
+        ...(body.slicerName && { slicerName: body.slicerName }),
         ...(body.status && { status: body.status }),
         ...(body.version && { version: body.version }),
         ...(body.approvedBy !== undefined && { approvedBy: body.approvedBy }),
@@ -40,6 +41,7 @@ export async function PATCH(
         ...(body.layerHeight !== undefined && { layerHeight: parseFloat(body.layerHeight) }),
         ...(body.infillPercent !== undefined && { infillPercent: parseInt(body.infillPercent) }),
         ...(body.infillPattern && { infillPattern: body.infillPattern }),
+        ...(body.wallCount !== undefined && { wallCount: parseInt(body.wallCount) }),
         ...(body.notes !== undefined && { notes: body.notes }),
       },
       include: { calibration: true },

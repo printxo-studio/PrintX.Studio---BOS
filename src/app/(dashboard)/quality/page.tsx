@@ -25,6 +25,8 @@ import {
   MessageSquareWarning,
   Workflow,
   Sparkles,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
@@ -59,6 +61,12 @@ export default function QualityTqmPage() {
   const [isAddQcOpen, setIsAddQcOpen] = useState(false);
   const [isAddComplaintOpen, setIsAddComplaintOpen] = useState(false);
   const [isAddCapaOpen, setIsAddCapaOpen] = useState(false);
+  const [isEditQcOpen, setIsEditQcOpen] = useState(false);
+  const [editQcForm, setEditQcForm] = useState<any>({});
+  const [isEditComplaintOpen, setIsEditComplaintOpen] = useState(false);
+  const [editComplaintForm, setEditComplaintForm] = useState<any>({});
+  const [isEditCapaOpen, setIsEditCapaOpen] = useState(false);
+  const [editCapaForm, setEditCapaForm] = useState<any>({});
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
   // Forms
@@ -212,6 +220,150 @@ export default function QualityTqmPage() {
       if (res.ok) loadAllData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // Inspection Edit/Delete
+  const handleOpenEditQc = (item: any) => {
+    setEditQcForm({
+      id: item.id,
+      qcCode: item.qcCode,
+      result: item.result || 'PASSED',
+      defectType: item.defectType || '',
+      severity: item.severity || 'MINOR',
+      reworkRequired: item.reworkRequired || false,
+      reprintRequired: item.reprintRequired || false,
+      rootCause: item.rootCause || '',
+      correctiveAction: item.correctiveAction || '',
+      preventiveAction: item.preventiveAction || '',
+      notes: item.notes || '',
+    });
+    setIsEditQcOpen(true);
+  };
+
+  const handleUpdateQc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/quality/inspections/${editQcForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editQcForm),
+      });
+      if (res.ok) {
+        setIsEditQcOpen(false);
+        loadAllData();
+      } else {
+        alert('Failed to update inspection');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating inspection');
+    }
+  };
+
+  const handleDeleteQc = async (id: string, qcCode: string) => {
+    if (!confirm(`Are you sure you want to delete inspection ${qcCode}?`)) return;
+    try {
+      const res = await fetch(`/api/quality/inspections/${id}`, { method: 'DELETE' });
+      if (res.ok) loadAllData();
+      else alert('Failed to delete inspection');
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting inspection');
+    }
+  };
+
+  // Complaint Edit/Delete
+  const handleOpenEditComplaint = (c: any) => {
+    setEditComplaintForm({
+      id: c.id,
+      complaintCode: c.complaintCode,
+      issueTitle: c.issueTitle || '',
+      status: c.status || 'OPEN',
+      severity: c.severity || 'HIGH',
+      resolution: c.resolution || '',
+      notes: c.notes || '',
+      owner: c.owner || '',
+    });
+    setIsEditComplaintOpen(true);
+  };
+
+  const handleUpdateComplaint = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/quality/complaints/${editComplaintForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editComplaintForm),
+      });
+      if (res.ok) {
+        setIsEditComplaintOpen(false);
+        loadAllData();
+      } else {
+        alert('Failed to update complaint');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating complaint');
+    }
+  };
+
+  const handleDeleteComplaint = async (id: string, code: string) => {
+    if (!confirm(`Are you sure you want to delete complaint ${code}?`)) return;
+    try {
+      const res = await fetch(`/api/quality/complaints/${id}`, { method: 'DELETE' });
+      if (res.ok) loadAllData();
+      else alert('Failed to delete complaint');
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting complaint');
+    }
+  };
+
+  // CAPA Edit/Delete
+  const handleOpenEditCapa = (capa: any) => {
+    setEditCapaForm({
+      id: capa.id,
+      capaCode: capa.capaCode,
+      status: capa.status || 'OPEN',
+      containmentAction: capa.containmentAction || '',
+      rootCauseAnalysis: capa.rootCauseAnalysis || '',
+      correctiveAction: capa.correctiveAction || '',
+      preventiveAction: capa.preventiveAction || '',
+      notes: capa.notes || '',
+    });
+    setIsEditCapaOpen(true);
+  };
+
+  const handleUpdateCapa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/quality/capa/${editCapaForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editCapaForm),
+      });
+      if (res.ok) {
+        setIsEditCapaOpen(false);
+        loadAllData();
+      } else {
+        alert('Failed to update CAPA');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating CAPA');
+    }
+  };
+
+  const handleDeleteCapa = async (id: string, code: string) => {
+    if (!confirm(`Are you sure you want to delete CAPA record ${code}?`)) return;
+    try {
+      const res = await fetch(`/api/quality/capa/${id}`, { method: 'DELETE' });
+      if (res.ok) loadAllData();
+      else alert('Failed to delete CAPA');
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting CAPA');
     }
   };
 
@@ -491,12 +643,13 @@ export default function QualityTqmPage() {
                     <th style={{ padding: '12px 16px', fontWeight: 600 }}>Result</th>
                     <th style={{ padding: '12px 16px', fontWeight: 600 }}>Defect / Action</th>
                     <th style={{ padding: '12px 16px', fontWeight: 600 }}>Inspector</th>
+                    <th style={{ padding: '12px 16px', fontWeight: 600, textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {inspections.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                      <td colSpan={8} style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)' }}>
                         No QC inspections recorded yet.
                       </td>
                     </tr>
@@ -594,6 +747,39 @@ export default function QualityTqmPage() {
 
                         <td style={{ padding: '14px 16px', color: 'var(--text-secondary)' }}>
                           {i.inspector || 'Staff'}
+                        </td>
+
+                        <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                            <button
+                              onClick={() => handleOpenEditQc(i)}
+                              title="Edit Inspection"
+                              style={{
+                                padding: '4px 6px',
+                                backgroundColor: 'var(--bg-surface-elevated)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 4,
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteQc(i.id, i.qcCode)}
+                              title="Delete Inspection"
+                              style={{
+                                padding: '4px 6px',
+                                backgroundColor: 'var(--bg-surface-elevated)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 4,
+                                color: 'var(--accent-red)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -816,6 +1002,36 @@ export default function QualityTqmPage() {
                             >
                               Escalate to CAPA
                             </button>
+
+                            <button
+                              title="Edit Complaint"
+                              onClick={() => handleOpenEditComplaint(c)}
+                              style={{
+                                padding: '5px 7px',
+                                backgroundColor: 'var(--bg-surface-elevated)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 4,
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Edit2 size={12} />
+                            </button>
+
+                            <button
+                              title="Delete Complaint"
+                              onClick={() => handleDeleteComplaint(c.id, c.complaintCode)}
+                              style={{
+                                padding: '5px 7px',
+                                backgroundColor: 'var(--bg-surface-elevated)',
+                                border: '1px solid var(--border-subtle)',
+                                borderRadius: 4,
+                                color: 'var(--accent-red)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <Trash2 size={12} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -954,23 +1170,58 @@ export default function QualityTqmPage() {
                     borderTop: '1px solid var(--border-subtle)',
                   }}
                 >
-                  {capa.status !== 'CLOSED' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button
-                      onClick={() => handleUpdateCapaStatus(capa.id, 'CLOSED')}
+                      onClick={() => handleOpenEditCapa(capa)}
                       style={{
-                        padding: '6px 14px',
-                        backgroundColor: 'var(--accent-green, #10b981)',
-                        color: '#ffffff',
-                        border: 'none',
+                        padding: '6px 10px',
+                        backgroundColor: 'var(--bg-surface-elevated)',
+                        border: '1px solid var(--border-subtle)',
                         borderRadius: 4,
                         fontSize: 12,
-                        fontWeight: 600,
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                      title="Edit CAPA"
+                    >
+                      <Edit2 size={13} /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCapa(capa.id, capa.capaCode)}
+                      style={{
+                        padding: '6px 10px',
+                        backgroundColor: 'var(--bg-surface-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 4,
+                        fontSize: 12,
+                        color: 'var(--accent-red)',
                         cursor: 'pointer',
                       }}
+                      title="Delete CAPA"
                     >
-                      Verify & Close CAPA
+                      <Trash2 size={13} />
                     </button>
-                  )}
+                    {capa.status !== 'CLOSED' && (
+                      <button
+                        onClick={() => handleUpdateCapaStatus(capa.id, 'CLOSED')}
+                        style={{
+                          padding: '6px 14px',
+                          backgroundColor: 'var(--accent-green, #10b981)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Verify & Close CAPA
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
@@ -1487,6 +1738,286 @@ export default function QualityTqmPage() {
               }}
             >
               Initiate CAPA
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT QC INSPECTION MODAL */}
+      <Modal
+        isOpen={isEditQcOpen}
+        onClose={() => setIsEditQcOpen(false)}
+        title={`Edit Inspection: ${editQcForm.qcCode || ''}`}
+      >
+        <form onSubmit={handleUpdateQc} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Result
+              </label>
+              <select
+                value={editQcForm.result || 'PASSED'}
+                onChange={(e) => setEditQcForm({ ...editQcForm, result: e.target.value })}
+                className="input"
+                style={{ width: '100%' }}
+              >
+                <option value="PASSED">PASSED</option>
+                <option value="FAILED">FAILED</option>
+                <option value="CONDITIONAL_PASS">CONDITIONAL_PASS</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Severity
+              </label>
+              <select
+                value={editQcForm.severity || 'MINOR'}
+                onChange={(e) => setEditQcForm({ ...editQcForm, severity: e.target.value })}
+                className="input"
+                style={{ width: '100%' }}
+              >
+                <option value="MINOR">MINOR</option>
+                <option value="MAJOR">MAJOR</option>
+                <option value="CRITICAL">CRITICAL</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Defect Classification (if any)
+            </label>
+            <select
+              value={editQcForm.defectType || ''}
+              onChange={(e) => setEditQcForm({ ...editQcForm, defectType: e.target.value })}
+              className="input"
+              style={{ width: '100%' }}
+            >
+              <option value="">None (Conforming)</option>
+              {DEFECT_CATALOG.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={Boolean(editQcForm.reworkRequired)}
+                onChange={(e) => setEditQcForm({ ...editQcForm, reworkRequired: e.target.checked })}
+              />
+              Rework Required
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={Boolean(editQcForm.reprintRequired)}
+                onChange={(e) => setEditQcForm({ ...editQcForm, reprintRequired: e.target.checked })}
+              />
+              Reprint Required
+            </label>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Inspection Notes / Root Cause
+            </label>
+            <textarea
+              className="input"
+              rows={2}
+              value={editQcForm.notes || ''}
+              onChange={(e) => setEditQcForm({ ...editQcForm, notes: e.target.value })}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsEditQcOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm">
+              Save QC Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT COMPLAINT MODAL */}
+      <Modal
+        isOpen={isEditComplaintOpen}
+        onClose={() => setIsEditComplaintOpen(false)}
+        title={`Edit Complaint: ${editComplaintForm.complaintCode || ''}`}
+      >
+        <form onSubmit={handleUpdateComplaint} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Issue Title *
+            </label>
+            <input
+              type="text"
+              required
+              className="input"
+              value={editComplaintForm.issueTitle || ''}
+              onChange={(e) => setEditComplaintForm({ ...editComplaintForm, issueTitle: e.target.value })}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Status
+              </label>
+              <select
+                value={editComplaintForm.status || 'OPEN'}
+                onChange={(e) => setEditComplaintForm({ ...editComplaintForm, status: e.target.value })}
+                className="input"
+                style={{ width: '100%' }}
+              >
+                <option value="OPEN">OPEN</option>
+                <option value="INVESTIGATING">INVESTIGATING</option>
+                <option value="RESOLVED">RESOLVED</option>
+                <option value="CLOSED">CLOSED</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Severity
+              </label>
+              <select
+                value={editComplaintForm.severity || 'HIGH'}
+                onChange={(e) => setEditComplaintForm({ ...editComplaintForm, severity: e.target.value })}
+                className="input"
+                style={{ width: '100%' }}
+              >
+                <option value="LOW">LOW</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HIGH">HIGH</option>
+                <option value="CRITICAL">CRITICAL</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Resolution Notes
+            </label>
+            <textarea
+              className="input"
+              rows={2}
+              value={editComplaintForm.resolution || ''}
+              onChange={(e) => setEditComplaintForm({ ...editComplaintForm, resolution: e.target.value })}
+              placeholder="How this issue was resolved..."
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsEditComplaintOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm">
+              Save Complaint Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT CAPA MODAL */}
+      <Modal
+        isOpen={isEditCapaOpen}
+        onClose={() => setIsEditCapaOpen(false)}
+        title={`Edit CAPA: ${editCapaForm.capaCode || ''}`}
+      >
+        <form onSubmit={handleUpdateCapa} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Status
+            </label>
+            <select
+              value={editCapaForm.status || 'OPEN'}
+              onChange={(e) => setEditCapaForm({ ...editCapaForm, status: e.target.value })}
+              className="input"
+              style={{ width: '100%' }}
+            >
+              <option value="OPEN">OPEN</option>
+              <option value="IN_PROGRESS">IN_PROGRESS</option>
+              <option value="VERIFICATION">VERIFICATION</option>
+              <option value="CLOSED">CLOSED</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Immediate Containment Action
+            </label>
+            <textarea
+              className="input"
+              rows={2}
+              value={editCapaForm.containmentAction || ''}
+              onChange={(e) => setEditCapaForm({ ...editCapaForm, containmentAction: e.target.value })}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Root Cause Analysis (5-Whys)
+            </label>
+            <textarea
+              className="input"
+              rows={3}
+              value={editCapaForm.rootCauseAnalysis || ''}
+              onChange={(e) => setEditCapaForm({ ...editCapaForm, rootCauseAnalysis: e.target.value })}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Corrective Action
+            </label>
+            <textarea
+              className="input"
+              rows={2}
+              value={editCapaForm.correctiveAction || ''}
+              onChange={(e) => setEditCapaForm({ ...editCapaForm, correctiveAction: e.target.value })}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Preventive Action
+            </label>
+            <textarea
+              className="input"
+              rows={2}
+              value={editCapaForm.preventiveAction || ''}
+              onChange={(e) => setEditCapaForm({ ...editCapaForm, preventiveAction: e.target.value })}
+              style={{ width: '100%', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsEditCapaOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm">
+              Save CAPA Changes
             </button>
           </div>
         </form>

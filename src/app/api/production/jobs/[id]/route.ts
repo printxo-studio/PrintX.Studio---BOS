@@ -193,6 +193,12 @@ export async function PATCH(
       data: {
         ...(body.status && { status: body.status }),
         ...(body.qcStatus && { qcStatus: body.qcStatus }),
+        ...(body.operator !== undefined && { operator: body.operator }),
+        ...(body.quantity !== undefined && { quantity: parseInt(body.quantity) || 1 }),
+        ...(body.estimatedTimeHours !== undefined && { estimatedTimeHours: parseFloat(body.estimatedTimeHours) || 0 }),
+        ...(body.estimatedFilamentG !== undefined && { estimatedFilamentG: parseFloat(body.estimatedFilamentG) || 0 }),
+        ...(body.printerId && { printerId: body.printerId }),
+        ...(body.filamentSpoolId !== undefined && { filamentSpoolId: body.filamentSpoolId || null }),
         ...(body.notes !== undefined && { notes: body.notes }),
       },
     });
@@ -203,3 +209,17 @@ export async function PATCH(
     return NextResponse.json({ error: 'Failed to update print job' }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await db.printJob.delete({ where: { id: params.id } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Print job delete error:', error);
+    return NextResponse.json({ error: 'Failed to delete print job' }, { status: 500 });
+  }
+}
+

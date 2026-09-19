@@ -15,6 +15,8 @@ import {
   ShoppingBag,
   RotateCcw,
   Check,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
@@ -45,6 +47,10 @@ export default function ProductionBoardPage() {
     failureReason: 'Bed corner lifted after 2 hours of printing',
     actualTimeHours: '2.0',
   });
+
+  // Edit Job Modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editJobForm, setEditJobForm] = useState<any>({});
 
   const loadData = async () => {
     setLoading(true);
@@ -124,6 +130,54 @@ export default function ProductionBoardPage() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEditJob = (job: any) => {
+    setEditJobForm({
+      id: job.id,
+      jobCode: job.jobCode || '',
+      printerId: job.printerId || '',
+      quantity: job.quantity || 1,
+      operator: job.operator || '',
+      status: job.status || 'QUEUED',
+      notes: job.notes || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/production/jobs/${editJobForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editJobForm),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        loadData();
+      } else {
+        alert('Failed to update print job');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating print job');
+    }
+  };
+
+  const handleDeleteJob = async (id: string, jobCode: string) => {
+    if (!confirm(`Are you sure you want to delete print job ${jobCode}?`)) return;
+    try {
+      const res = await fetch(`/api/production/jobs/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadData();
+      } else {
+        alert('Failed to delete print job');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting print job');
     }
   };
 
@@ -331,6 +385,23 @@ export default function ProductionBoardPage() {
                     </span>
                   </div>
                 )}
+
+                <button
+                  title="Edit Job"
+                  onClick={() => handleOpenEditJob(job)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '4px 6px', color: 'var(--text-secondary)' }}
+                >
+                  <Edit2 size={13} />
+                </button>
+                <button
+                  title="Delete Job"
+                  onClick={() => handleDeleteJob(job.id, job.jobCode)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '4px 6px', color: 'var(--accent-red)' }}
+                >
+                  <Trash2 size={13} />
+                </button>
               </div>
             </div>
           ))
@@ -465,6 +536,104 @@ export default function ProductionBoardPage() {
           </form>
         </Modal>
       )}
+
+      {/* EDIT PRINT JOB MODAL */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit Job: ${editJobForm.jobCode || ''}`}
+      >
+        <form onSubmit={handleUpdateJob} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Assigned Printer
+              </label>
+              <select
+                value={editJobForm.printerId || ''}
+                onChange={(e) => setEditJobForm({ ...editJobForm, printerId: e.target.value })}
+                className="form-control"
+              >
+                <option value="">Unassigned</option>
+                {printers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.model})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Status
+              </label>
+              <select
+                value={editJobForm.status || 'QUEUED'}
+                onChange={(e) => setEditJobForm({ ...editJobForm, status: e.target.value })}
+                className="form-control"
+              >
+                <option value="QUEUED">QUEUED</option>
+                <option value="SCHEDULED">SCHEDULED</option>
+                <option value="PRINTING">PRINTING</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="FAILED">FAILED</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Quantity
+              </label>
+              <input
+                type="number"
+                min="1"
+                className="form-control"
+                value={editJobForm.quantity || 1}
+                onChange={(e) => setEditJobForm({ ...editJobForm, quantity: parseInt(e.target.value) || 1 })}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Operator
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                value={editJobForm.operator || ''}
+                onChange={(e) => setEditJobForm({ ...editJobForm, operator: e.target.value })}
+                placeholder="Operator name"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Job Notes / Instructions
+            </label>
+            <textarea
+              className="form-control"
+              rows={2}
+              value={editJobForm.notes || ''}
+              onChange={(e) => setEditJobForm({ ...editJobForm, notes: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

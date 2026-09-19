@@ -45,11 +45,30 @@ export async function PATCH(
         ? 'LOW'
         : body.status || current.status;
 
+    const costPerSpool = body.costPerSpool !== undefined ? parseFloat(body.costPerSpool) : undefined;
+    const initialWeightG = body.initialWeightG !== undefined ? parseFloat(body.initialWeightG) : undefined;
+    const costPerGram =
+      costPerSpool !== undefined && initialWeightG && initialWeightG > 0
+        ? costPerSpool / initialWeightG
+        : body.costPerGram !== undefined
+        ? parseFloat(body.costPerGram)
+        : undefined;
+
     const updated = await db.filamentSpool.update({
       where: { id: params.id },
       data: {
         currentWeightG: newWeight,
         status: newStatus,
+        ...(body.spoolCode && { spoolCode: body.spoolCode }),
+        ...(body.brand && { brand: body.brand }),
+        ...(body.material && { material: body.material }),
+        ...(body.colorName && { colorName: body.colorName }),
+        ...(body.colorHex && { colorHex: body.colorHex }),
+        ...(initialWeightG !== undefined && { initialWeightG }),
+        ...(costPerSpool !== undefined && { costPerSpool }),
+        ...(costPerGram !== undefined && { costPerGram }),
+        ...(body.reorderLevelG !== undefined && { reorderLevelG: parseFloat(body.reorderLevelG) }),
+        ...(body.batchNumber !== undefined && { batchNumber: body.batchNumber }),
         ...(body.dryingStatus && { dryingStatus: body.dryingStatus }),
         ...(body.storageLocation !== undefined && { storageLocation: body.storageLocation }),
         ...(body.notes !== undefined && { notes: body.notes }),

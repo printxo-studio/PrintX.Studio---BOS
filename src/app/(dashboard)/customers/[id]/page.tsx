@@ -20,9 +20,12 @@ import {
   Clock,
   Star,
   DollarSign,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
+import { Modal } from '@/components/ui/Modal';
 import { formatCurrency } from '@/lib/calculations';
 
 export default function CustomerDetailPage() {
@@ -30,9 +33,11 @@ export default function CustomerDetailPage() {
   const router = useRouter();
   const [customer, setCustomer] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'quotes' | 'invoices' | 'complaints'>('overview');
 
-  useEffect(() => {
+  const loadCustomer = () => {
     if (!params.id) return;
     fetch(`/api/crm/customers/${params.id}`)
       .then((res) => (res.ok ? res.json() : null))
@@ -44,7 +49,57 @@ export default function CustomerDetailPage() {
         console.error(err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    loadCustomer();
   }, [params.id]);
+
+  const handleOpenEdit = () => {
+    if (!customer) return;
+    setEditFormData({
+      name: customer.name || '',
+      company: customer.company || '',
+      customerType: customer.customerType || 'B2B',
+      phone: customer.phone || '',
+      email: customer.email || '',
+      gstin: customer.gstin || '',
+      address: customer.address || '',
+      city: customer.city || '',
+      state: customer.state || '',
+      status: customer.status || 'ACTIVE',
+      rating: customer.rating !== undefined ? customer.rating : 5.0,
+      notes: customer.notes || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/crm/customers/${params.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        loadCustomer();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this customer? All historical links may be affected.')) return;
+    try {
+      const res = await fetch(`/api/crm/customers/${params.id}`, { method: 'DELETE' });
+      if (res.ok) router.push('/customers');
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (loading) {
     return (
@@ -124,6 +179,19 @@ export default function CustomerDetailPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={handleOpenEdit}
+            className="btn btn-secondary btn-sm"
+          >
+            <Edit2 size={13} /> Edit Customer
+          </button>
+          <button
+            onClick={handleDelete}
+            className="btn btn-ghost btn-sm"
+            style={{ color: 'var(--status-danger, #ef4444)' }}
+          >
+            <Trash2 size={13} /> Delete
+          </button>
           <Link
             href={`/quotes/new?customerId=${customer.id}`}
             className="btn btn-primary btn-sm"
@@ -454,6 +522,151 @@ export default function CustomerDetailPage() {
           )}
         </div>
       )}
+
+      {/* EDIT CUSTOMER MODAL */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit Customer (${customer?.name || ''})`}
+      >
+        <form onSubmit={handleUpdate}>
+          <div className="form-group">
+            <label className="form-label">Client / Contact Name *</label>
+            <input
+              type="text"
+              required
+              className="form-control"
+              value={editFormData.name || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">Company Name</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editFormData.company || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, company: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Classification</label>
+              <select
+                className="form-control"
+                value={editFormData.customerType || 'B2B'}
+                onChange={(e) => setEditFormData({ ...editFormData, customerType: e.target.value })}
+              >
+                <option value="B2B">B2B Enterprise</option>
+                <option value="B2C">B2C Direct Consumer</option>
+                <option value="INSTITUTIONAL">Institutional / University</option>
+                <option value="MAKER">Maker / Hobbyist</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">Phone</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editFormData.phone || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Email</label>
+              <input
+                type="email"
+                className="form-control"
+                value={editFormData.email || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">GSTIN</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editFormData.gstin || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, gstin: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select
+                className="form-control"
+                value={editFormData.status || 'ACTIVE'}
+                onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+                <option value="PROSPECT">Prospect</option>
+                <option value="BLOCKED">Blocked</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="form-group">
+              <label className="form-label">City</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editFormData.city || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, city: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">State</label>
+              <input
+                type="text"
+                className="form-control"
+                value={editFormData.state || ''}
+                onChange={(e) => setEditFormData({ ...editFormData, state: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Address</label>
+            <textarea
+              className="form-control"
+              rows={2}
+              value={editFormData.address || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Notes</label>
+            <textarea
+              className="form-control"
+              rows={2}
+              value={editFormData.notes || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

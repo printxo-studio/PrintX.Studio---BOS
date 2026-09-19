@@ -22,6 +22,8 @@ import {
   RotateCcw,
   Boxes,
   FileCheck,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
@@ -52,6 +54,7 @@ export default function RndPage() {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedExp, setSelectedExp] = useState<any | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isPromoteModalOpen, setIsPromoteModalOpen] = useState(false);
@@ -73,6 +76,22 @@ export default function RndPage() {
     conclusion: 'Protocol validated. Mandatory for all aerospace drone components before delivery.',
     recommendedSettings: 'Oven: 130°C | Dwell: 240 mins | Cooling: Chamber slow cool to <50°C',
     status: 'VALIDATED',
+  });
+
+  const [editExpForm, setEditExpForm] = useState({
+    id: '',
+    title: '',
+    objective: '',
+    hypothesis: '',
+    productId: '',
+    material: 'PA-CF',
+    variablesTested: '',
+    measurements: '',
+    resultsSummary: '',
+    cost: '0',
+    conclusion: '',
+    recommendedSettings: '',
+    status: 'PLANNING',
   });
 
   const loadData = async () => {
@@ -123,6 +142,62 @@ export default function RndPage() {
       if (res.ok) loadData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEdit = (exp: any) => {
+    setEditExpForm({
+      id: exp.id,
+      title: exp.title || '',
+      objective: exp.objective || '',
+      hypothesis: exp.hypothesis || '',
+      productId: exp.productId || '',
+      material: exp.material || 'PA-CF',
+      variablesTested: exp.variablesTested || '',
+      measurements: exp.measurements || '',
+      resultsSummary: exp.resultsSummary || '',
+      cost: String(exp.cost ?? 0),
+      conclusion: exp.conclusion || '',
+      recommendedSettings: exp.recommendedSettings || '',
+      status: exp.status || 'PLANNING',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateExperiment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/rnd/${editExpForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editExpForm),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update experiment');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating experiment');
+    }
+  };
+
+  const handleDeleteExperiment = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this R&D experiment?')) return;
+    try {
+      const res = await fetch(`/api/rnd/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete experiment');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting experiment');
     }
   };
 
@@ -563,6 +638,40 @@ export default function RndPage() {
                         </option>
                       ))}
                     </select>
+
+                    <button
+                      title="Edit Experiment"
+                      onClick={() => handleOpenEdit(exp)}
+                      style={{
+                        padding: '6px 9px',
+                        backgroundColor: 'var(--bg-surface-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 4,
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Edit2 size={13} />
+                    </button>
+
+                    <button
+                      title="Delete Experiment"
+                      onClick={() => handleDeleteExperiment(exp.id)}
+                      style={{
+                        padding: '6px 9px',
+                        backgroundColor: 'var(--bg-surface-elevated)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: 4,
+                        color: 'var(--accent-red)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -774,6 +883,276 @@ export default function RndPage() {
             >
               Save Experiment
             </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT EXPERIMENT MODAL */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit R&D Experiment"
+      >
+        <form onSubmit={handleUpdateExperiment} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Experiment Title
+            </label>
+            <input
+              type="text"
+              required
+              value={editExpForm.title}
+              onChange={(e) => setEditExpForm({ ...editExpForm, title: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Material
+              </label>
+              <input
+                type="text"
+                value={editExpForm.material}
+                onChange={(e) => setEditExpForm({ ...editExpForm, material: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Stage / Status
+              </label>
+              <select
+                value={editExpForm.status}
+                onChange={(e) => setEditExpForm({ ...editExpForm, status: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {RND_STATUSES.filter((s) => s.id !== 'ALL').map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Objective
+            </label>
+            <textarea
+              rows={2}
+              value={editExpForm.objective}
+              onChange={(e) => setEditExpForm({ ...editExpForm, objective: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+                resize: 'none',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Hypothesis
+            </label>
+            <textarea
+              rows={2}
+              value={editExpForm.hypothesis}
+              onChange={(e) => setEditExpForm({ ...editExpForm, hypothesis: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+                resize: 'none',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Variables Tested
+              </label>
+              <input
+                type="text"
+                value={editExpForm.variablesTested}
+                onChange={(e) => setEditExpForm({ ...editExpForm, variablesTested: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Cost Incurred (₹)
+              </label>
+              <input
+                type="number"
+                value={editExpForm.cost}
+                onChange={(e) => setEditExpForm({ ...editExpForm, cost: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Measurements & Data
+            </label>
+            <textarea
+              rows={2}
+              value={editExpForm.measurements}
+              onChange={(e) => setEditExpForm({ ...editExpForm, measurements: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+                resize: 'none',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Conclusion & Recommendations
+            </label>
+            <textarea
+              rows={2}
+              value={editExpForm.conclusion}
+              onChange={(e) => setEditExpForm({ ...editExpForm, conclusion: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+                resize: 'none',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Recommended Production Settings
+            </label>
+            <input
+              type="text"
+              value={editExpForm.recommendedSettings}
+              onChange={(e) => setEditExpForm({ ...editExpForm, recommendedSettings: e.target.value })}
+              placeholder="e.g. Bed 110°C, Nozzle 280°C, Chamber 60°C"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditModalOpen(false);
+                handleDeleteExperiment(editExpForm.id);
+              }}
+              style={{
+                padding: '8px 14px',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 4,
+                color: 'var(--accent-red)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              <Trash2 size={14} />
+              Delete Experiment
+            </button>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={{
+                  padding: '8px 18px',
+                  backgroundColor: 'var(--accent-red)',
+                  border: 'none',
+                  borderRadius: 4,
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </form>
       </Modal>

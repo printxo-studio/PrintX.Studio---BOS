@@ -31,6 +31,8 @@ export async function PATCH(
     const updated = await db.calibration.update({
       where: { id: params.id },
       data: {
+        ...(body.calibrationType && { calibrationType: body.calibrationType }),
+        ...(body.filamentMaterial && { filamentMaterial: body.filamentMaterial }),
         ...(body.recommendedValue && { recommendedValue: body.recommendedValue }),
         ...(body.measuredValue !== undefined && { measuredValue: body.measuredValue }),
         ...(body.result && { result: body.result }),

@@ -18,6 +18,8 @@ import {
   RotateCcw,
   Boxes,
   ArrowRight,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { KPICard } from '@/components/ui/KPICard';
@@ -37,6 +39,7 @@ export default function ShippingPage() {
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<any | null>(null);
 
   // Forms
@@ -48,6 +51,16 @@ export default function ShippingPage() {
     shippingCost: '350',
     status: 'SHIPPED',
     notes: 'Fragile carbon fiber components. High grade protective bubble wrapping applied.',
+  });
+
+  const [editShipmentForm, setEditShipmentForm] = useState({
+    id: '',
+    courierName: 'Delhivery',
+    trackingNumber: '',
+    trackingUrl: '',
+    shippingCost: '0',
+    status: 'SHIPPED',
+    notes: '',
   });
 
   const loadData = async () => {
@@ -104,6 +117,56 @@ export default function ShippingPage() {
       if (res.ok) loadData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleOpenEdit = (shp: any) => {
+    setEditShipmentForm({
+      id: shp.id,
+      courierName: shp.courierName || 'Delhivery',
+      trackingNumber: shp.trackingNumber || '',
+      trackingUrl: shp.trackingUrl || '',
+      shippingCost: String(shp.shippingCost ?? 0),
+      status: shp.status || 'SHIPPED',
+      notes: shp.notes || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateShipment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/shipping/${editShipmentForm.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editShipmentForm),
+      });
+      if (res.ok) {
+        setIsEditModalOpen(false);
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update shipment');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating shipment');
+    }
+  };
+
+  const handleDeleteShipment = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this shipment?')) return;
+    try {
+      const res = await fetch(`/api/shipping/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to delete shipment');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting shipment');
     }
   };
 
@@ -447,6 +510,34 @@ export default function ShippingPage() {
                             Mark Delivered
                           </button>
                         )}
+                        <button
+                          title="Edit Shipment"
+                          onClick={() => handleOpenEdit(shp)}
+                          style={{
+                            padding: '5px 8px',
+                            backgroundColor: 'var(--bg-surface-elevated)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 4,
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                        <button
+                          title="Delete Shipment"
+                          onClick={() => handleDeleteShipment(shp.id)}
+                          style={{
+                            padding: '5px 8px',
+                            backgroundColor: 'var(--bg-surface-elevated)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: 4,
+                            color: 'var(--accent-red)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -646,6 +737,204 @@ export default function ShippingPage() {
             >
               Dispatch Shipment
             </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* EDIT SHIPMENT MODAL */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Shipment Details"
+      >
+        <form onSubmit={handleUpdateShipment} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Courier Service
+              </label>
+              <select
+                value={editShipmentForm.courierName}
+                onChange={(e) => setEditShipmentForm({ ...editShipmentForm, courierName: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                {COURIERS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Shipment Status
+              </label>
+              <select
+                value={editShipmentForm.status}
+                onChange={(e) => setEditShipmentForm({ ...editShipmentForm, status: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <option value="PACKED">PACKED</option>
+                <option value="SHIPPED">SHIPPED</option>
+                <option value="IN_TRANSIT">IN_TRANSIT</option>
+                <option value="OUT_FOR_DELIVERY">OUT_FOR_DELIVERY</option>
+                <option value="DELIVERED">DELIVERED</option>
+                <option value="FAILED_ATTEMPT">FAILED_ATTEMPT</option>
+                <option value="RETURNED">RETURNED</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Tracking / AWB Number
+              </label>
+              <input
+                type="text"
+                value={editShipmentForm.trackingNumber}
+                onChange={(e) => setEditShipmentForm({ ...editShipmentForm, trackingNumber: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Freight / Shipping Cost (₹)
+              </label>
+              <input
+                type="number"
+                value={editShipmentForm.shippingCost}
+                onChange={(e) => setEditShipmentForm({ ...editShipmentForm, shippingCost: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  backgroundColor: 'var(--bg-canvas)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-primary)',
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Tracking URL
+            </label>
+            <input
+              type="url"
+              value={editShipmentForm.trackingUrl}
+              onChange={(e) => setEditShipmentForm({ ...editShipmentForm, trackingUrl: e.target.value })}
+              placeholder="https://..."
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Handling Instructions & Notes
+            </label>
+            <textarea
+              rows={2}
+              value={editShipmentForm.notes}
+              onChange={(e) => setEditShipmentForm({ ...editShipmentForm, notes: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-canvas)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 4,
+                color: 'var(--text-primary)',
+                resize: 'none',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditModalOpen(false);
+                handleDeleteShipment(editShipmentForm.id);
+              }}
+              style={{
+                padding: '8px 14px',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 4,
+                color: 'var(--accent-red)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              <Trash2 size={14} />
+              Delete Shipment
+            </button>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: 4,
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                style={{
+                  padding: '8px 18px',
+                  backgroundColor: 'var(--accent-red)',
+                  border: 'none',
+                  borderRadius: 4,
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </form>
       </Modal>
