@@ -1,6 +1,28 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+async function notifyWebsiteShipment(shipment: any, orderNumber: string) {
+  const websiteUrl = process.env.WEBSITE_API_URL || 'http://localhost:3000';
+  try {
+    await fetch(`${websiteUrl}/api/sync/shipment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderNumber,
+        carrier: shipment.courierName,
+        trackingNumber: shipment.trackingNumber,
+        trackingUrl: shipment.trackingUrl,
+        status: shipment.status,
+        shippedAt: shipment.shipDate,
+        notes: shipment.notes,
+      }),
+    });
+    console.log(`✓ Notified website of shipment update for ${orderNumber}`);
+  } catch (e: any) {
+    console.warn('Website shipment notification warning:', e.message);
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -40,7 +62,7 @@ export async function POST(request: Request) {
       data: {
         shipmentCode,
         orderId: body.orderId,
-        courierName: body.courierName || 'Delhivery',
+        courierName: body.courierName || 'Delhivery Express',
         trackingNumber: body.trackingNumber || null,
         trackingUrl: body.trackingUrl || null,
         shipDate: body.shipDate ? new Date(body.shipDate) : new Date(),
@@ -54,7 +76,6 @@ export async function POST(request: Request) {
       },
     });
 
-    // Update order shipping status if order linked
     if (body.orderId) {
       await db.order.update({
         where: { id: body.orderId },
@@ -62,6 +83,10 @@ export async function POST(request: Request) {
           shippingStatus: body.status === 'DELIVERED' ? 'DELIVERED' : 'SHIPPED',
         },
       });
+    }
+
+    if (newShipment.order?.orderNumber) {
+      await notifyWebsiteShipment(newShipment, newShipment.order.orderNumber);
     }
 
     return NextResponse.json(newShipment, { status: 201 });

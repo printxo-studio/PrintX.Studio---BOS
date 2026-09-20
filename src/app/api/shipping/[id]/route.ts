@@ -1,6 +1,28 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+async function notifyWebsiteShipment(shipment: any, orderNumber: string) {
+  const websiteUrl = process.env.WEBSITE_API_URL || 'http://localhost:3000';
+  try {
+    await fetch(`${websiteUrl}/api/sync/shipment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderNumber,
+        carrier: shipment.courierName,
+        trackingNumber: shipment.trackingNumber,
+        trackingUrl: shipment.trackingUrl,
+        status: shipment.status,
+        shippedAt: shipment.shipDate,
+        notes: shipment.notes,
+      }),
+    });
+    console.log(`✓ Notified website of shipment update for ${orderNumber}`);
+  } catch (e: any) {
+    console.warn('Website shipment notification warning:', e.message);
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -30,7 +52,6 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json();
-
     const isDelivered = body.status === 'DELIVERED';
 
     const updated = await db.shipment.update({
@@ -46,19 +67,15 @@ export async function PATCH(
       include: { order: true },
     });
 
-    // Sync order status
     if (updated.orderId && body.status) {
-      if (body.status === 'DELIVERED') {
-        await db.order.update({
-          where: { id: updated.orderId },
-          data: { shippingStatus: 'DELIVERED' },
-        });
-      } else if (body.status === 'IN_TRANSIT' || body.status === 'SHIPPED') {
-        await db.order.update({
-          where: { id: updated.orderId },
-          data: { shippingStatus: 'SHIPPED' },
-        });
-      }
+      await db.order.update({
+        where: { id: updated.orderId },
+        data: { shippingStatus: body.status === 'DELIVERED' ? 'DELIVERED' : 'SHIPPED' },
+      });
+    }
+
+    if (updated.order?.orderNumber) {
+      await notifyWebsiteShipment(updated, updated.order.orderNumber);
     }
 
     return NextResponse.json(updated);

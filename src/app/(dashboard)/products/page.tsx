@@ -29,6 +29,55 @@ export default function ProductsCataloguePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<any>({});
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [publishingSku, setPublishingSku] = useState<string | null>(null);
+  const [publishedSkus, setPublishedSkus] = useState<Set<string>>(new Set());
+
+  // Fetch already published products from Website storefront
+  useEffect(() => {
+    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3000';
+    fetch(`${websiteUrl}/api/sync/product`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.products && Array.isArray(data.products)) {
+          setPublishedSkus(new Set(data.products.map((p: any) => p.sku)));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handlePublishToWebsite = async (product: any) => {
+    setPublishingSku(product.sku);
+    try {
+      const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3000';
+      const res = await fetch(`${websiteUrl}/api/sync/product`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          description: product.description || `Industrial precision 3D manufactured component in ${product.materialName || 'PLA+'}. Dimensionally verified.`,
+          price: product.sellingPrice || 999,
+          costPrice: product.productionCost || 250,
+          category: product.category || 'Engineering Parts',
+          material: product.materialName || 'PLA+',
+          standardPrintTimeHours: product.standardPrintTimeHours,
+          isFeatured: true,
+        }),
+      });
+
+      if (res.ok) {
+        setPublishedSkus((prev) => new Set([...Array.from(prev), product.sku]));
+        alert(`✓ "${product.name}" (${product.sku}) published live to PrintX Studio storefront!`);
+      } else {
+        alert('Failed to publish product to storefront.');
+      }
+    } catch (e: any) {
+      alert('Error connecting to storefront: ' + e.message);
+    } finally {
+      setPublishingSku(null);
+    }
+  };
 
   const fetchProducts = async () => {
     setLoading(true);
