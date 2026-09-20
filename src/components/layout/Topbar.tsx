@@ -15,6 +15,7 @@ import {
   Shield,
   Layers,
   X,
+  LogOut,
 } from 'lucide-react';
 import { COMPANY_DETAILS } from '@/lib/constants';
 
@@ -33,6 +34,28 @@ export function Topbar({ onOpenCommandPalette, onOpenQuickAdd }: TopbarProps) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const searchRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Load current authenticated user
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.authenticated && data?.user) {
+          setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Logout handler
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (_) {}
+    router.push('/login');
+    router.refresh();
+  };
 
   // Load notifications
   useEffect(() => {
@@ -337,35 +360,61 @@ export function Topbar({ onOpenCommandPalette, onOpenQuickAdd }: TopbarProps) {
           <span>₹</span> INR
         </div>
 
-        {/* Studio Owner Profile Indicator */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '3px 8px',
-            borderRadius: 'var(--radius-sm)',
-            backgroundColor: 'var(--bg-surface-elevated)',
-            border: '1px solid var(--border-subtle)',
-          }}
-        >
+        {/* Studio Operator Profile & Logout */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div
             style={{
-              width: 22,
-              height: 22,
-              borderRadius: '50%',
-              backgroundColor: 'var(--accent-red)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontSize: 10,
-              fontWeight: 800,
+              gap: 8,
+              padding: '3px 10px',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'var(--bg-surface-elevated)',
+              border: '1px solid var(--border-subtle)',
             }}
           >
-            P
+            <div
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: '50%',
+                backgroundColor: 'var(--accent-red)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 800,
+              }}
+            >
+              {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'O'}
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
+              {currentUser?.role || 'Owner'}
+            </span>
           </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>Owner</span>
+
+          <button
+            onClick={handleLogout}
+            title="Sign Out of BOS"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '5px 10px',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              color: '#f87171',
+              fontSize: 11.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <LogOut style={{ width: 12, height: 12 }} />
+            <span>Sign Out</span>
+          </button>
         </div>
       </div>
     </header>

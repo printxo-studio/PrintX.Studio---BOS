@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from '@/components/ui/CommandPalette';
@@ -11,8 +12,14 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname();
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+
+  // Bypass shell layout on auth pages
+  if (pathname === '/login' || pathname?.startsWith('/login/')) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="app-container">

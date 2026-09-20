@@ -154,11 +154,11 @@ export function Sidebar() {
           >
             <img
               src={logoUrl || '/logo.png'}
-              alt="PRINTXO Studio"
+              alt="PrintX Studio"
               style={{
-                height: 32,
+                height: 36,
                 width: 'auto',
-                maxWidth: 165,
+                maxWidth: 170,
                 objectFit: 'contain',
                 display: 'block',
               }}
@@ -172,12 +172,17 @@ export function Sidebar() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              width: 38,
+              height: 38,
+              borderRadius: 8,
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
             }}
-            title="PRINTXO Studio"
+            title="PrintX Studio"
           >
             <img
               src="/logo-icon.png"
-              alt="PRINTXO"
+              alt="PrintX Studio"
               style={{
                 width: 28,
                 height: 28,

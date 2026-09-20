@@ -93,7 +93,7 @@ export default function InvoicePrintPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div
               style={{
-                width: 180,
+                width: 200,
                 height: 54,
                 display: 'flex',
                 alignItems: 'center',
@@ -103,8 +103,8 @@ export default function InvoicePrintPage() {
             >
               <img
                 src={settings?.logoUrl || '/logo.png'}
-                alt=""
-                style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
+                alt="PrintX Studio"
+                style={{ height: 54, width: 'auto', maxWidth: 200, objectFit: 'contain' }}
               />
             </div>
           </div>

@@ -87,6 +87,7 @@ export default function QuotePrintPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <div
               style={{
+                width: 200,
                 height: 52,
                 display: 'flex',
                 alignItems: 'center',
@@ -96,8 +97,8 @@ export default function QuotePrintPage() {
             >
               <img
                 src={settings?.logoUrl || '/logo.png'}
-                alt=""
-                style={{ maxHeight: '100%', maxWidth: 220, objectFit: 'contain' }}
+                alt="PrintX Studio"
+                style={{ height: 52, width: 'auto', maxWidth: 200, objectFit: 'contain' }}
               />
             </div>
           </div>
