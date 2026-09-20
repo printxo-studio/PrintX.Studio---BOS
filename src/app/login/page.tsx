@@ -16,7 +16,7 @@ import {
   Layers,
 } from 'lucide-react';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
@@ -496,5 +496,31 @@ export default function LoginPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: '100vh',
+            width: '100%',
+            backgroundColor: '#090a0f',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#94a3b8',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: '14px',
+          }}
+        >
+          Loading Studio Access...
+        </div>
+      }
+    >
+      <LoginForm />
+    </React.Suspense>
   );
 }
