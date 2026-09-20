@@ -6,9 +6,9 @@ export const metadata: Metadata = {
   title: 'PRINTXO — Business Operating System (BOS)',
   description: 'Enterprise ERP, MES & TQM System for 3D Printing & Additive Manufacturing',
   icons: {
-    icon: '/icon.png',
-    shortcut: '/favicon.ico',
-    apple: '/icon.png',
+    icon: '/logo-icon.png',
+    shortcut: '/logo-icon.png',
+    apple: '/logo-icon.png',
   },
 };
 
