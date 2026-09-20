@@ -40,6 +40,7 @@ model Customer {
   customerType      String    @default("B2B") // B2B, B2C, INSTITUTIONAL, MAKER
   phone             String?
   email             String?
+  passwordHash      String?
   address           String?
   city              String?
   state             String?
@@ -176,6 +177,7 @@ model Order {
   overallStatus     String      @default("CONFIRMED") // DRAFT, CONFIRMED, IN_PRODUCTION, READY, DISPATCHED, DELIVERED, COMPLETED, CANCELLED
   
   shippingAddress   String?
+  shippingMethod    String?   @default("Standard Surface")
   notes             String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
@@ -219,6 +221,13 @@ model Product {
   description     String?
   status          String    @default("ACTIVE") // ACTIVE, DEVELOPMENT, RETIRED, ARCHIVED
   currentVersion  String    @default("1.0")
+  isPublished     Boolean   @default(true)
+  stockQuantity   Int       @default(50)
+  slug            String?   @unique
+  imageUrl        String?
+  images          Json?
+  colorOptions    Json?
+  dimensions      String?
   
   // Manufacturing Defaults
   materialName    String?

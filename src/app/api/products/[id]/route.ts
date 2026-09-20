@@ -101,6 +101,12 @@ export async function PATCH(
         ...(body.standardFilamentGrams !== undefined && { standardFilamentGrams: parseFloat(body.standardFilamentGrams) }),
         ...(sellingPrice !== undefined && { sellingPrice }),
         ...(productionCost !== undefined && { productionCost }),
+        ...(body.isPublished !== undefined && { isPublished: Boolean(body.isPublished) }),
+        ...(body.stockQuantity !== undefined && { stockQuantity: parseInt(body.stockQuantity) }),
+        ...(body.dimensions !== undefined && { dimensions: body.dimensions }),
+        ...(body.imageUrl !== undefined && { imageUrl: body.imageUrl }),
+        ...(body.images !== undefined && { images: body.images }),
+        ...(body.colorOptions !== undefined && { colorOptions: body.colorOptions }),
       },
     });
 
