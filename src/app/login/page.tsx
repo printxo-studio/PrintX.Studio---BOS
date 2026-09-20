@@ -12,7 +12,6 @@ import {
   Cpu,
   CheckCircle2,
   AlertCircle,
-  KeyRound,
   Layers,
 } from 'lucide-react';
 
@@ -71,11 +70,6 @@ function LoginForm() {
     }
   };
 
-  const handleFillOwnerCredentials = () => {
-    setEmail('printxo.studio@gmail.com');
-    setPassword('PrintX@2026!');
-    setError(null);
-  };
 
   return (
     <div
@@ -415,60 +409,6 @@ function LoginForm() {
           </button>
         </form>
 
-        {/* Quick Fill Credentials Card for Owner */}
-        <div
-          style={{
-            marginTop: '28px',
-            padding: '14px 16px',
-            borderRadius: '12px',
-            backgroundColor: '#161924',
-            border: '1px solid #23293c',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '8px',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '12px',
-                fontWeight: 700,
-                color: '#f1f5f9',
-              }}
-            >
-              <KeyRound style={{ width: '13px', height: '13px', color: '#ef4444' }} />
-              Default Owner Credentials
-            </div>
-            <button
-              type="button"
-              onClick={handleFillOwnerCredentials}
-              style={{
-                background: 'rgba(220, 38, 38, 0.15)',
-                border: '1px solid rgba(220, 38, 38, 0.3)',
-                borderRadius: '6px',
-                color: '#f87171',
-                padding: '3px 8px',
-                fontSize: '11px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Auto-Fill
-            </button>
-          </div>
-          <div style={{ fontSize: '11.5px', color: '#94a3b8', lineHeight: 1.5 }}>
-            Email: <strong style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>printxo.studio@gmail.com</strong>
-            <br />
-            Password: <strong style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>PrintX@2026!</strong>
-          </div>
-        </div>
 
         {/* Security Footer */}
         <div
