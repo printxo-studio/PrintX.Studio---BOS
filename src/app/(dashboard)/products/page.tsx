@@ -29,55 +29,6 @@ export default function ProductsCataloguePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<any>({});
   const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [publishingSku, setPublishingSku] = useState<string | null>(null);
-  const [publishedSkus, setPublishedSkus] = useState<Set<string>>(new Set());
-
-  // Fetch already published products from Website storefront
-  useEffect(() => {
-    const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3000';
-    fetch(`${websiteUrl}/api/sync/product`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.products && Array.isArray(data.products)) {
-          setPublishedSkus(new Set(data.products.map((p: any) => p.sku)));
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const handlePublishToWebsite = async (product: any) => {
-    setPublishingSku(product.sku);
-    try {
-      const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3000';
-      const res = await fetch(`${websiteUrl}/api/sync/product`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: product.id,
-          name: product.name,
-          sku: product.sku,
-          description: product.description || `Industrial precision 3D manufactured component in ${product.materialName || 'PLA+'}. Dimensionally verified.`,
-          price: product.sellingPrice || 999,
-          costPrice: product.productionCost || 250,
-          category: product.category || 'Engineering Parts',
-          material: product.materialName || 'PLA+',
-          standardPrintTimeHours: product.standardPrintTimeHours,
-          isFeatured: true,
-        }),
-      });
-
-      if (res.ok) {
-        setPublishedSkus((prev) => new Set([...Array.from(prev), product.sku]));
-        alert(`✓ "${product.name}" (${product.sku}) published live to PrintX Studio storefront!`);
-      } else {
-        alert('Failed to publish product to storefront.');
-      }
-    } catch (e: any) {
-      alert('Error connecting to storefront: ' + e.message);
-    } finally {
-      setPublishingSku(null);
-    }
-  };
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -109,24 +60,6 @@ export default function ProductsCataloguePage() {
       ? products
       : products.filter((p) => p.category?.toLowerCase().includes(categoryFilter.toLowerCase()));
 
-  const handleTogglePublish = async (product: any) => {
-    try {
-      const newStatus = !(product.isPublished !== false);
-      const res = await fetch(`/api/products/${product.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isPublished: newStatus }),
-      });
-      if (res.ok) {
-        setProducts((prev) =>
-          prev.map((p) => (p.id === product.id ? { ...p, isPublished: newStatus } : p))
-        );
-      }
-    } catch (e) {
-      console.error('Failed to toggle publish status', e);
-    }
-  };
-
   const handleOpenEditProduct = (product: any) => {
     setEditFormData({
       id: product.id,
@@ -135,8 +68,6 @@ export default function ProductsCataloguePage() {
       category: product.category || '',
       materialName: product.materialName || '',
       status: product.status || 'ACTIVE',
-      isPublished: product.isPublished !== false,
-      stockQuantity: product.stockQuantity ?? 50,
       sellingPrice: product.sellingPrice || 0,
       productionCost: product.productionCost || 0,
       standardPrintTimeHours: product.standardPrintTimeHours || 0,
@@ -283,30 +214,6 @@ export default function ProductsCataloguePage() {
       render: (item) => <StatusBadge status={item.status} />,
       sortable: true,
       width: '100px',
-    },
-    {
-      key: 'website',
-      header: 'Storefront',
-      render: (item) => (
-        <button
-          type="button"
-          onClick={() => handleTogglePublish(item)}
-          className="badge"
-          style={{
-            cursor: 'pointer',
-            border: item.isPublished !== false ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(234, 179, 8, 0.4)',
-            background: item.isPublished !== false ? 'rgba(34, 197, 94, 0.15)' : 'rgba(234, 179, 8, 0.15)',
-            color: item.isPublished !== false ? '#22c55e' : '#eab308',
-            fontSize: 11,
-            padding: '3px 8px',
-            borderRadius: 6,
-          }}
-          title="Click to toggle live customer website storefront visibility"
-        >
-          {item.isPublished !== false ? '● Live' : '○ Draft'}
-        </button>
-      ),
-      width: '105px',
     },
     {
       key: 'actions',
@@ -508,31 +415,6 @@ export default function ProductsCataloguePage() {
                 onChange={(e) => setEditFormData({ ...editFormData, sellingPrice: parseFloat(e.target.value) || 0 })}
                 style={{ width: '100%', marginTop: 4 }}
               />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Available Stock (Units)</label>
-              <input
-                type="number"
-                step="1"
-                className="input"
-                value={editFormData.stockQuantity ?? 50}
-                onChange={(e) => setEditFormData({ ...editFormData, stockQuantity: parseInt(e.target.value) || 0 })}
-                style={{ width: '100%', marginTop: 4 }}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 22 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-                <input
-                  type="checkbox"
-                  checked={editFormData.isPublished !== false}
-                  onChange={(e) => setEditFormData({ ...editFormData, isPublished: e.target.checked })}
-                  style={{ accentColor: 'var(--accent-red)', width: 16, height: 16 }}
-                />
-                Publish to Website Storefront
-              </label>
             </div>
           </div>
 

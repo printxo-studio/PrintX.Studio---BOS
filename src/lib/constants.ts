@@ -30,6 +30,7 @@ export const NAVIGATION_MODULES = [
   { id: 'customers', name: 'Customers', path: '/customers', icon: 'UserCheck', group: 'Sales & Commercial' },
   { id: 'quotes', name: 'Quotations', path: '/quotes', icon: 'FileText', group: 'Sales & Commercial' },
   { id: 'orders', name: 'Orders', path: '/orders', icon: 'ShoppingBag', group: 'Sales & Commercial' },
+  { id: 'listings', name: 'Store Listings', path: '/listings', icon: 'Store', group: 'Sales & Commercial' },
   
   { id: 'production', name: 'Production', path: '/production', icon: 'Cpu', group: 'Manufacturing' },
   { id: 'products', name: 'Products & CAD', path: '/products', icon: 'Box', group: 'Manufacturing' },

@@ -29,6 +29,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Flame,
+  Store,
 } from 'lucide-react';
 import { NAVIGATION_MODULES } from '@/lib/constants';
 
@@ -39,6 +40,7 @@ const ICON_MAP: Record<string, any> = {
   UserCheck,
   FileText,
   ShoppingBag,
+  Store,
   Cpu,
   Box,
   Printer,
