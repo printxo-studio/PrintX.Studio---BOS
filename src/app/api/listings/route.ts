@@ -9,6 +9,9 @@ export async function GET() {
         versions: {
           select: { id: true, version: true, active: true, stlFileUrl: true },
         },
+        reviews: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -43,6 +46,17 @@ export async function GET() {
           ? Math.round((((p.sellingPrice - (p.productionCost || 0)) / p.sellingPrice) * 100) * 10) / 10
           : 0;
 
+      const productReviews = (p as any).reviews || [];
+      const reviewsCount = productReviews.length;
+      const averageRating =
+        reviewsCount > 0
+          ? Math.round(
+              (productReviews.reduce((sum: number, r: any) => sum + r.rating, 0) /
+                reviewsCount) *
+                10
+            ) / 10
+          : 5.0;
+
       return {
         id: p.id,
         sku: p.sku,
@@ -55,13 +69,16 @@ export async function GET() {
         productionCost: p.productionCost || 0,
         estimatedMargin: margin,
         stockQuantity: p.stockQuantity ?? 50,
-        isPublished: p.isPublished !== false,
+        isPublished: Boolean(p.isPublished),
         status: p.status || 'ACTIVE',
         dimensions: p.dimensions || '120 x 85 x 65 mm',
         materialName: p.materialName || 'PLA+',
         colorOptions: colorList.length > 0 ? colorList : ['Matte Black', 'Studio Crimson', 'Signal White'],
         imageUrl: p.imageUrl || imagesList[0]?.url || '/logo-icon.svg',
         images: imagesList,
+        rating: averageRating,
+        reviewsCount,
+        reviews: productReviews,
         standardPrintTimeHours: p.standardPrintTimeHours || 4,
         standardFilamentGrams: p.standardFilamentGrams || 150,
         createdAt: p.createdAt,

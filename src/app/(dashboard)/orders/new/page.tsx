@@ -28,6 +28,7 @@ function NewOrderWizard() {
   const [shippingCost, setShippingCost] = useState(250);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isGstEnabled, setIsGstEnabled] = useState(false);
 
   const [items, setItems] = useState<any[]>([
     {
@@ -36,12 +37,24 @@ function NewOrderWizard() {
       description: 'Additive manufactured component',
       quantity: 1,
       unitPrice: 1200,
-      taxRate: 18.0,
+      taxRate: 0.0,
       lineTotal: 1200,
     },
   ]);
 
   useEffect(() => {
+    fetch('/api/settings')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.settings?.gstEnabled) {
+          setIsGstEnabled(true);
+          setItems((prev) => prev.map((item) => ({ ...item, taxRate: 18.0 })));
+        } else {
+          setIsGstEnabled(false);
+        }
+      })
+      .catch(() => {});
+
     fetch('/api/crm/customers')
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
@@ -89,7 +102,7 @@ function NewOrderWizard() {
   };
 
   const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
-  const taxAmount = Math.round((subtotal + shippingCost) * 0.18);
+  const taxAmount = isGstEnabled ? Math.round((subtotal + shippingCost) * 0.18) : 0;
   const totalAmount = subtotal + shippingCost + taxAmount;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -368,7 +381,7 @@ function NewOrderWizard() {
                   <span style={{ fontFamily: 'monospace' }}>{formatCurrency(shippingCost)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>GST (18%):</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{isGstEnabled ? 'GST (18%):' : 'Tax (GST Disabled):'}</span>
                   <span style={{ fontFamily: 'monospace' }}>{formatCurrency(taxAmount)}</span>
                 </div>
                 <div

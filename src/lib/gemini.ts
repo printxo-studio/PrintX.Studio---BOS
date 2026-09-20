@@ -20,50 +20,39 @@ export async function generateGeminiInvoiceForOrder(orderId: string): Promise<an
   const count = await db.invoice.count();
   const invoiceNumber = `INV-2026-${String(count + 1).padStart(4, '0')}`;
 
+  // Check system config for GST
+  const setting = await db.setting.findUnique({
+    where: { key: 'PRINTXO_SYSTEM_CONFIG' },
+  });
+  let isGstEnabled = false;
+  if (setting?.value) {
+    try {
+      const parsed = JSON.parse(setting.value);
+      isGstEnabled = parsed.gstEnabled === true;
+    } catch (e) {}
+  }
+
   const state = (order.customer.state || '').trim().toLowerCase();
   const isIntraState = !state || state === 'karnataka' || state === 'ka';
 
   const subtotal = order.subtotal || 0;
   const discountTotal = order.discountTotal || 0;
   const taxableAmount = Math.max(0, subtotal - discountTotal);
-  const totalTax = order.taxAmount > 0 ? order.taxAmount : Math.round(taxableAmount * 0.18);
+  
+  // If GST is disabled, tax MUST be 0
+  const totalTax = isGstEnabled
+    ? (order.taxAmount > 0 ? order.taxAmount : Math.round(taxableAmount * 0.18))
+    : 0;
 
-  const cgstAmount = isIntraState ? Math.round(totalTax / 2) : 0;
-  const sgstAmount = isIntraState ? totalTax - cgstAmount : 0;
-  const igstAmount = !isIntraState ? totalTax : 0;
+  const cgstAmount = isGstEnabled && isIntraState ? Math.round(totalTax / 2) : 0;
+  const sgstAmount = isGstEnabled && isIntraState ? totalTax - cgstAmount : 0;
+  const igstAmount = isGstEnabled && !isIntraState ? totalTax : 0;
 
   const grandTotal = taxableAmount + totalTax + (order.shippingCost || 0);
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  let aiNote = 'Digitally certified & verified by PrintX Studio Gemini AI Financial Engine. Complies with HSN 8477 for 3D Additive Polymer Manufacturing.';
-
-  if (apiKey && apiKey.trim().length > 10) {
-    try {
-      const prompt = `You are the certified Chief Financial AI for PrintX Studio (3D Printing & Additive Manufacturing).
-Order Ref: ${order.orderNumber}
-Items: ${JSON.stringify(order.items.map((i) => ({ name: i.name, qty: i.quantity, rate: i.unitPrice })))}
-Total: ₹${grandTotal}
-Customer: ${order.customer.name} (${order.customer.city || 'Bengaluru'}, ${order.customer.state || 'KA'})
-Generate a brief 1-2 sentence professional verification note for the customer tax invoice.`;
-
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-        }
-      );
-
-      if (geminiRes.ok) {
-        const geminiData = await geminiRes.json();
-        const candidate = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (candidate) aiNote = candidate.trim();
-      }
-    } catch (aiErr) {
-      console.warn('Gemini API call warning:', aiErr);
-    }
-  }
+  const officialNote = isGstEnabled
+    ? `Official electronic GST tax invoice for Order ${order.orderNumber}. Complies with HSN 8477 for 3D Additive Polymer Manufacturing. No physical signature required under Section 28 of IT Act 2000.`
+    : `Official commercial bill of supply / invoice for Order ${order.orderNumber}. Non-GST supply. Complies with HSN 8477 for 3D Additive Polymer Manufacturing. No physical signature required under Section 28 of IT Act 2000.`;
 
   const newInvoice = await db.invoice.create({
     data: {
@@ -86,7 +75,7 @@ Generate a brief 1-2 sentence professional verification note for the customer ta
       amountPaid: order.paymentStatus === 'PAID' ? grandTotal : 0,
       balanceDue: order.paymentStatus === 'PAID' ? 0 : grandTotal,
       status: order.paymentStatus === 'PAID' ? 'PAID' : 'ISSUED',
-      notes: aiNote,
+      notes: officialNote,
       items: {
         create: order.items.map((item) => ({
           description: item.name + (item.sku ? ` [${item.sku}]` : ''),
@@ -94,7 +83,7 @@ Generate a brief 1-2 sentence professional verification note for the customer ta
           quantity: item.quantity,
           rate: item.unitPrice,
           discount: item.discount,
-          taxRate: item.taxRate || 18.0,
+          taxRate: isGstEnabled ? (item.taxRate || 18.0) : 0.0,
           amount: item.lineTotal,
         })),
       },

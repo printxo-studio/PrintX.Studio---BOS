@@ -257,6 +257,7 @@ model Product {
   complaints      Complaint[]
   rndExperiments  RndExperiment[]
   tasks           Task[]
+  reviews         Review[]
 }
 
 model ProductVersion {
@@ -890,3 +891,21 @@ model Setting {
   description String?
   updatedAt   DateTime  @updatedAt
 }
+
+// ==========================================
+// 18. PRODUCT REVIEWS & R&D FEEDBACK
+// ==========================================
+model Review {
+  id           String    @id @default(cuid())
+  productId    String
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  rating       Int       @default(5)
+  reviewerName String
+  comment      String?
+  source       String    @default("WEBSITE")
+  feedbackType String?   @default("GENERAL")
+  createdAt    DateTime  @default(now())
+
+  @@index([productId])
+}
+

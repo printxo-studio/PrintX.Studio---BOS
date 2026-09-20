@@ -87,22 +87,21 @@ export default function QuotePrintPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <div
               style={{
-                height: 44,
+                height: 52,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'flex-start',
+                marginBottom: 8,
               }}
             >
               <img
                 src={settings?.logoUrl || '/logo.png'}
-                alt="PRINTXO"
-                style={{ maxHeight: '100%', maxWidth: 200, objectFit: 'contain' }}
+                alt=""
+                style={{ maxHeight: '100%', maxWidth: 220, objectFit: 'contain' }}
               />
             </div>
           </div>
           <div style={{ fontSize: 11.5, color: '#64748b', lineHeight: 1.45 }}>
-            <strong>{settings?.legalName || COMPANY_DETAILS.legalName || 'PRINTXO Additive Technologies'}</strong>
-            <br />
             {settings?.address || COMPANY_DETAILS.address}, {settings?.city || COMPANY_DETAILS.city} - {settings?.pincode || COMPANY_DETAILS.pincode}
             <br />
             {isGst && (settings?.gstin || COMPANY_DETAILS.gstin) && (

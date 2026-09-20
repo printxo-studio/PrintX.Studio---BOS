@@ -51,8 +51,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   taxExemptionNote: 'Composition / Unregistered Supplier under GST Law — Not eligible to collect tax on supplies.',
 
   // Company Profile
-  companyName: 'PRINTXO',
-  legalName: 'PRINTXO Additive Technologies',
+  companyName: 'PrintX Studio',
+  legalName: 'PrintX Studio',
   tagline: 'Professional 3D Printing & Additive Manufacturing',
   email: 'printxo.studio@gmail.com',
   phone: '+91 98765 43210',
@@ -61,7 +61,7 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   state: 'Karnataka',
   country: 'India',
   pincode: '560058',
-  website: 'https://printxo.studio',
+  website: 'https://printx.studio',
   logoUrl: '/logo.png',
 
   // Pricing Engine

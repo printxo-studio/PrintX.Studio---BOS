@@ -3,8 +3,8 @@
 // =========================================================
 
 export const COMPANY_DETAILS = {
-  name: 'PRINTXO',
-  legalName: 'PRINTXO Additive Technologies',
+  name: 'PrintX Studio',
+  legalName: 'PrintX Studio',
   tagline: 'Professional 3D Printing & Additive Manufacturing',
   email: 'printxo.studio@gmail.com',
   phone: '+91 98765 43210',
@@ -15,7 +15,7 @@ export const COMPANY_DETAILS = {
   pincode: '560058',
   gstEnabled: false, // User does not currently have GSTIN; toggleable via /settings
   gstin: '', // Blank until registered
-  website: 'https://printxo.studio',
+  website: 'https://printx.studio',
   logoUrl: '/logo.png',
   defaultCurrency: 'INR',
   currencySymbol: '₹',

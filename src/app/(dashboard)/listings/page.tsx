@@ -25,6 +25,9 @@ import {
   Table as TableIcon,
   X,
   Upload,
+  Star,
+  MessageSquare,
+  ShieldCheck,
 } from 'lucide-react';
 import { KPICard } from '@/components/ui/KPICard';
 import { Modal } from '@/components/ui/Modal';
@@ -50,6 +53,20 @@ interface Listing {
   colorOptions: string[];
   imageUrl: string;
   images: Array<{ url: string; altText?: string }>;
+  rating?: number;
+  avgRating?: number;
+  reviewsCount?: number;
+  reviewCount?: number;
+  reviews?: Array<{
+    id: string;
+    rating: number;
+    authorName?: string;
+    reviewerName?: string;
+    comment: string;
+    createdAt: string;
+    feedbackType?: string;
+    isVerified?: boolean;
+  }>;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -61,6 +78,7 @@ export default function ListingsManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'LIVE' | 'DRAFT' | 'LOW_STOCK'>('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [rndModalListing, setRndModalListing] = useState<Listing | null>(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -469,25 +487,38 @@ export default function ListingsManagementPage() {
           gap: 12,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 260 }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, flex: 1, minWidth: 260 }}>
           <div style={{ position: 'relative', width: '100%', maxWidth: 360 }}>
             <Search
-              size={15}
+              size={14}
               style={{
                 position: 'absolute',
-                left: 10,
+                left: 12,
                 top: '50%',
                 transform: 'translateY(-50%)',
                 color: 'var(--text-muted)',
+                pointerEvents: 'none',
               }}
             />
             <input
               type="text"
               placeholder="Search listings by name, SKU, material, category..."
-              className="input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ paddingLeft: 34, width: '100%', fontSize: 13 }}
+              style={{
+                paddingLeft: 34,
+                paddingRight: 12,
+                paddingTop: 7,
+                paddingBottom: 7,
+                width: '100%',
+                fontSize: 13,
+                background: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-primary)',
+                outline: 'none',
+                height: 34,
+              }}
             />
           </div>
 
@@ -498,7 +529,7 @@ export default function ListingsManagementPage() {
                 key={st}
                 onClick={() => setStatusFilter(st)}
                 className={`btn btn-sm ${statusFilter === st ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ fontSize: 12, padding: '4px 10px' }}
+                style={{ fontSize: 12, padding: '5px 12px', height: 34 }}
               >
                 {st === 'ALL'
                   ? 'All'
@@ -511,17 +542,27 @@ export default function ListingsManagementPage() {
             ))}
           </div>
 
-          {/* Category Dropdown */}
+          {/* Category Dropdown - Dark Themed */}
           {categories.length > 0 && (
             <select
-              className="input"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              style={{ fontSize: 12, padding: '4px 8px', maxWidth: 180 }}
+              style={{
+                fontSize: 12.5,
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-default)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                outline: 'none',
+                minWidth: 150,
+                height: 34,
+              }}
             >
-              <option value="ALL">All Categories</option>
+              <option value="ALL" style={{ background: '#141416', color: '#fff' }}>All Categories</option>
               {categories.map((c) => (
-                <option key={c} value={c}>
+                <option key={c} value={c} style={{ background: '#141416', color: '#fff' }}>
                   {c}
                 </option>
               ))}
@@ -619,27 +660,32 @@ export default function ListingsManagementPage() {
                 {listing.imageUrl ? (
                   <img
                     src={listing.imageUrl}
-                    alt={listing.name}
+                    alt=""
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = 'none';
+                      const fb = (e.target as HTMLElement).nextElementSibling as HTMLElement;
+                      if (fb) fb.style.display = 'flex';
+                    }}
                     style={{
                       width: '100%',
                       height: '100%',
                       objectFit: 'cover',
                     }}
                   />
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    <ImageIcon size={32} />
-                  </div>
-                )}
+                ) : null}
+                <div
+                  style={{
+                    display: listing.imageUrl ? 'none' : 'flex',
+                    width: '100%',
+                    height: '100%',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--accent-red)',
+                    backgroundColor: '#141416',
+                  }}
+                >
+                  <Package size={36} />
+                </div>
 
                 {/* Status Badge Over Image */}
                 <div style={{ position: 'absolute', top: 10, left: 10 }}>
@@ -905,6 +951,16 @@ export default function ListingsManagementPage() {
                 </a>
 
                 <div style={{ display: 'flex', gap: 6 }}>
+                  {listing.reviewCount && listing.reviewCount > 0 ? (
+                    <button
+                      onClick={() => setRndModalListing(listing)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ padding: '4px 8px', fontSize: 11, color: '#eab308' }}
+                      title="Customer R&D Reviews"
+                    >
+                      <Star size={11} fill="#eab308" /> {listing.avgRating?.toFixed(1)} ({listing.reviewCount})
+                    </button>
+                  ) : null}
                   <button
                     onClick={() => handleOpenEditModal(listing)}
                     className="btn btn-secondary btn-sm"
@@ -962,14 +1018,38 @@ export default function ListingsManagementPage() {
                         height: 48,
                         borderRadius: 6,
                         overflow: 'hidden',
-                        backgroundColor: '#000',
+                        backgroundColor: '#141416',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative',
+                        border: '1px solid var(--border-default)',
                       }}
                     >
-                      <img
-                        src={listing.imageUrl || '/logo-icon.svg'}
-                        alt={listing.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
+                      {listing.imageUrl ? (
+                        <img
+                          src={listing.imageUrl}
+                          alt=""
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                            const fb = (e.target as HTMLElement).nextElementSibling as HTMLElement;
+                            if (fb) fb.style.display = 'flex';
+                          }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : null}
+                      <div
+                        style={{
+                          display: listing.imageUrl ? 'none' : 'flex',
+                          width: '100%',
+                          height: '100%',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        <Package size={20} />
+                      </div>
                     </div>
                   </td>
                   <td style={{ padding: '10px 14px' }}>
@@ -977,6 +1057,28 @@ export default function ListingsManagementPage() {
                     <div style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--accent-red)' }}>
                       {listing.sku} &bull; <span style={{ color: 'var(--text-muted)' }}>/{listing.slug}</span>
                     </div>
+                    {listing.reviewCount && listing.reviewCount > 0 ? (
+                      <button
+                        onClick={() => setRndModalListing(listing)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          marginTop: 4,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          backgroundColor: 'rgba(234, 179, 8, 0.12)',
+                          border: '1px solid rgba(234, 179, 8, 0.3)',
+                          color: '#eab308',
+                          cursor: 'pointer',
+                        }}
+                        title="View customer R&D feedback"
+                      >
+                        <Star size={10} fill="#eab308" />
+                        <span>{listing.avgRating?.toFixed(1) || '5.0'} ({listing.reviewCount} R&D)</span>
+                      </button>
+                    ) : null}
                   </td>
                   <td style={{ padding: '10px 14px', color: 'var(--text-secondary)', fontSize: 12 }}>
                     {listing.category}
@@ -1031,6 +1133,16 @@ export default function ListingsManagementPage() {
                   </td>
                   <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                      {listing.reviewCount && listing.reviewCount > 0 ? (
+                        <button
+                          onClick={() => setRndModalListing(listing)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '4px 6px', color: '#eab308' }}
+                          title="R&D Feedback"
+                        >
+                          <MessageSquare size={12} />
+                        </button>
+                      ) : null}
                       <a
                         href={`${websiteBaseUrl}/products/${listing.slug || listing.id}`}
                         target="_blank"
@@ -1445,6 +1557,150 @@ export default function ListingsManagementPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* R&D CUSTOMER FEEDBACK MODAL */}
+      <Modal
+        isOpen={!!rndModalListing}
+        onClose={() => setRndModalListing(null)}
+        title={`R&D Customer Feedback: ${rndModalListing?.name}`}
+        maxWidth="680px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: 'var(--bg-surface-elevated)',
+              padding: 14,
+              borderRadius: 8,
+              border: '1px solid var(--border-default)',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Average Customer Rating</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <div style={{ display: 'flex', gap: 2 }}>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      size={18}
+                      fill={s <= Math.round(rndModalListing?.avgRating || 0) ? '#eab308' : 'none'}
+                      color="#eab308"
+                    />
+                  ))}
+                </div>
+                <span style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>
+                  {rndModalListing?.avgRating ? rndModalListing.avgRating.toFixed(1) : '0.0'}
+                </span>
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  ({rndModalListing?.reviewCount || 0} reviews)
+                </span>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>SKU & Catalog Path</div>
+              <div style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-red)', marginTop: 4 }}>
+                {rndModalListing?.sku}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ maxHeight: 420, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {(!rndModalListing?.reviews || rndModalListing.reviews.length === 0) ? (
+              <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-muted)' }}>
+                <MessageSquare size={32} style={{ margin: '0 auto 10px', opacity: 0.4 }} />
+                <div>No customer ratings or R&D feedback submitted yet for this product.</div>
+                <div style={{ fontSize: 12, marginTop: 4, color: 'var(--text-secondary)' }}>
+                  Customer reviews submitted via the storefront will appear here with verification status.
+                </div>
+              </div>
+            ) : (
+              rndModalListing.reviews.map((rev) => (
+                <div
+                  key={rev.id}
+                  style={{
+                    backgroundColor: 'var(--bg-surface-elevated)',
+                    border: '1px solid var(--border-default)',
+                    borderRadius: 8,
+                    padding: 14,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 2 }}>
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            size={12}
+                            fill={s <= rev.rating ? '#eab308' : 'none'}
+                            color="#eab308"
+                          />
+                        ))}
+                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>
+                        {rev.authorName}
+                      </span>
+                      {rev.isVerified && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            color: '#22c55e',
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 3,
+                          }}
+                        >
+                          <ShieldCheck size={10} /> Verified Purchase
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {new Date(rev.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  {rev.comment && (
+                    <p style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {rev.comment}
+                    </p>
+                  )}
+
+                  {rev.feedbackType && rev.feedbackType !== 'GENERAL' && (
+                    <div style={{ marginTop: 8 }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          color: 'var(--accent-red)',
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
+                          fontWeight: 600,
+                        }}
+                      >
+                        R&D Tag: {rev.feedbackType}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 8, borderTop: '1px solid var(--border-default)' }}>
+            <button
+              onClick={() => setRndModalListing(null)}
+              className="btn btn-secondary"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

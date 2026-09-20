@@ -93,23 +93,22 @@ export default function InvoicePrintPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div
               style={{
-                width: 140,
-                height: 48,
+                width: 180,
+                height: 54,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'flex-start',
+                marginBottom: 6,
               }}
             >
               <img
                 src={settings?.logoUrl || '/logo.png'}
-                alt="PRINTXO"
+                alt=""
                 style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
               />
             </div>
           </div>
           <div style={{ fontSize: 11.5, color: '#64748b', lineHeight: 1.45 }}>
-            <strong>{settings?.legalName || 'PRINTXO Additive Technologies'}</strong>
-            <br />
             {settings?.address || 'Industrial Area, Phase II'}, {settings?.city || 'Bangalore'} - {settings?.pincode || '560058'}
             <br />
             {isGst && companyGstin && (
